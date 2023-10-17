@@ -63,7 +63,7 @@ glm::vec3 renderRay(RenderState& state, Ray ray, int rayDepth)
     return Lo;
 }
 
-// TODO: Standard feature
+// Standard feature
 // Given an incident ray and a intersection point, generate a mirrored ray
 // - Ray;     the indicent ray
 // - HitInfo; hit struct for the intersection point
@@ -71,9 +71,11 @@ glm::vec3 renderRay(RenderState& state, Ray ray, int rayDepth)
 // This method is unit-tested, so do not change the function signature.
 Ray generateReflectionRay(Ray ray, HitInfo hitInfo)
 {
-    // TODO: generate a mirrored ray
+    // generate a mirrored ray
     //       if you use glm::reflect, you will not get points for this method!
-    return Ray {};
+    glm::vec3 incomingRay = -1.0f * glm::normalize(ray.direction);
+    glm::vec3 mirrored = 2.0f * glm::dot(incomingRay, hitInfo.normal) * hitInfo.normal - incomingRay;
+    return Ray { ray.origin + (ray.t - 10 * FLT_EPSILON) * ray.direction, mirrored, std::numeric_limits<float>::max() };
 }
 
 // TODO: Standard feature
@@ -89,7 +91,7 @@ Ray generatePassthroughRay(Ray ray, HitInfo hitInfo)
     return Ray {};
 }
 
-// TODO: standard feature
+// Standard feature
 // Given a camera ray (or secondary ray) and an intersection, evaluates the contribution
 // of a mirrored ray, recursively evaluating renderRay(..., depth + 1) along this ray,
 // and adding the result times material.ks to the current intersection's hit color.
@@ -101,9 +103,10 @@ Ray generatePassthroughRay(Ray ray, HitInfo hitInfo)
 // This method is unit-tested, so do not change the function signature.
 void renderRaySpecularComponent(RenderState& state, Ray ray, const HitInfo& hitInfo, glm::vec3& hitColor, int rayDepth)
 {
-    // TODO; you should first implement generateReflectionRay()
+    // you should first implement generateReflectionRay()
     Ray r = generateReflectionRay(ray, hitInfo);
     // ...
+    hitColor += renderRay(state, r, rayDepth + 1) * hitInfo.material.ks;
 }
 
 // TODO: standard feature
