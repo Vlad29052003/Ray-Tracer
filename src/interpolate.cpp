@@ -12,8 +12,16 @@
 // This method is unit-tested, so do not change the function signature.
 glm::vec3 computeBarycentricCoord(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& p)
 {
-    // TODO: implement this function.
-    return glm::vec3(0.0);
+    auto coordinates = glm::vec3(0.0);
+    auto v0v1v2 = (1 / 2) * length(cross(v1 - v0, v2 - v1));
+    auto v1v2p = (1 / 2) * length(cross(v2 - v1, p - v2)); // https://www.youtube.com/watch?v=hQMbD2JT-qA
+    auto v0v2p = (1 / 2) * length(cross(v2 - v0, p - v2));
+
+    coordinates.x = v1v2p / v0v1v2;
+    coordinates.y = v0v2p / v0v1v2;
+    coordinates.z = 1.0f - coordinates.x - coordinates.y;
+
+    return coordinates;
 }
 
 // TODO Standard feature
@@ -26,8 +34,7 @@ glm::vec3 computeBarycentricCoord(const glm::vec3& v0, const glm::vec3& v1, cons
 // This method is unit-tested, so do not change the function signature.
 glm::vec3 interpolateNormal(const glm::vec3& n0, const glm::vec3& n1, const glm::vec3& n2, const glm::vec3 bc)
 {
-    // TODO: implement this function.
-    return glm::vec3(0.0);
+    return normalize(bc.x * n0 + bc.y * n1 + bc.z * n2);
 }
 
 // TODO Standard feature
@@ -41,5 +48,5 @@ glm::vec3 interpolateNormal(const glm::vec3& n0, const glm::vec3& n1, const glm:
 glm::vec2 interpolateTexCoord(const glm::vec2& t0, const glm::vec2& t1, const glm::vec2& t2, const glm::vec3 bc)
 {
 // TODO: implement this function.
-    return glm::vec2(0.0);
+    return normalize(bc.x * t0 + bc.y * t1 + bc.z * t2);
 }
