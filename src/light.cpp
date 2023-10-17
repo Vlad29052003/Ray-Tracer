@@ -25,8 +25,8 @@ DISABLE_WARNINGS_POP()
 void sampleSegmentLight(const float& sample, const SegmentLight& light, glm::vec3& position, glm::vec3& color)
 {
     // TODO: implement this function.
-    position = glm::vec3(0.0);
-    color = glm::vec3(0.0);
+    position = light.endpoint0 * (1.f - sample) + light.endpoint1 * sample;
+    color = light.color0 * (1.f - sample) + light.color1 * sample;
 }
 
 // TODO: Standard feature
@@ -41,8 +41,18 @@ void sampleSegmentLight(const float& sample, const SegmentLight& light, glm::vec
 void sampleParallelogramLight(const glm::vec2& sample, const ParallelogramLight& light, glm::vec3& position, glm::vec3& color)
 {
     // TODO: implement this function.
-    position = glm::vec3(0.0);
-    color = glm::vec3(0.0);
+    float a0 = (1.f - sample.x) * (1.f - sample.y);
+    float a1 = sample.x * (1.f - sample.y);
+    float a2 = (1.f - sample.x) * sample.y;
+    float a3 = sample.x * sample.y;
+
+    glm::vec3 v0 = light.v0;
+    glm::vec3 v1 = light.v0 + light.edge01;
+    glm::vec3 v2 = light.v0 + light.edge02;
+    glm::vec3 v3 = light.v0 + (light.edge01 + light.edge02);
+
+    position = v0 * a0 + v1 * a1 + v2 * a2 + v3 * a3;
+    color = light.color0 * a0 + light.color1 * a1 + light.color2 * a2 + light.color3 * a3;
 }
 
 // TODO: Standard feature
