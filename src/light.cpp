@@ -13,7 +13,7 @@ DISABLE_WARNINGS_PUSH()
 DISABLE_WARNINGS_POP()
 
 
-// TODO: Standard feature
+// Standard feature
 // Given a single segment light, transform a uniformly distributed 1d sample in [0, 1),
 // into a uniformly sampled position and an interpolated color on the segment light,
 // and write these into the reference return values.
@@ -24,12 +24,12 @@ DISABLE_WARNINGS_POP()
 // This method is unit-tested, so do not change the function signature.
 void sampleSegmentLight(const float& sample, const SegmentLight& light, glm::vec3& position, glm::vec3& color)
 {
-    // TODO: implement this function.
+    // implement this function.
     position = light.endpoint0 * (1.f - sample) + light.endpoint1 * sample;
     color = light.color0 * (1.f - sample) + light.color1 * sample;
 }
 
-// TODO: Standard feature
+// Standard feature
 // Given a single paralellogram light, transform a uniformly distributed 2d sample in [0, 1),
 // into a uniformly sampled position and interpolated color on the paralellogram light,
 // and write these into the reference return values.
@@ -40,7 +40,7 @@ void sampleSegmentLight(const float& sample, const SegmentLight& light, glm::vec
 // This method is unit-tested, so do not change the function signature.
 void sampleParallelogramLight(const glm::vec2& sample, const ParallelogramLight& light, glm::vec3& position, glm::vec3& color)
 {
-    // TODO: implement this function.
+    // implement this function.
     float a0 = (1.f - sample.x) * (1.f - sample.y);
     float a1 = sample.x * (1.f - sample.y);
     float a2 = (1.f - sample.x) * sample.y;
@@ -55,7 +55,7 @@ void sampleParallelogramLight(const glm::vec2& sample, const ParallelogramLight&
     color = light.color0 * a0 + light.color1 * a1 + light.color2 * a2 + light.color3 * a3;
 }
 
-// TODO: Standard feature
+// Standard feature
 // Given a sampled position on some light, and the emitted color at this position, return whether
 // or not the light is visible from the provided ray/intersection.
 // For a description of the method's arguments, refer to 'light.cpp'
@@ -73,8 +73,14 @@ bool visibilityOfLightSampleBinary(RenderState& state, const glm::vec3& lightPos
         return true;
     } else {
         // Shadows are enabled in the renderer
-        // TODO: implement this function; currently, the light simply passes through
-        return true;
+        glm::vec3 origin = ray.origin + (ray.t - 10 * FLT_EPSILON) * ray.direction;
+        glm::vec3 direction = lightPosition - origin;
+        Ray lightVisibilityRay = Ray(origin, direction, std::numeric_limits<float>::max());
+        HitInfo intersectionHitInfo = HitInfo(glm::vec3(0), glm::vec3(0), glm::vec2(0), Material(glm::vec3(0)));
+        bool intersected = state.bvh.intersect(state, lightVisibilityRay, intersectionHitInfo);
+        if (lightVisibilityRay.t >= (1.0f - 10 * FLT_EPSILON))
+            return true;
+        return false;
     }
 }
 
@@ -115,13 +121,14 @@ glm::vec3 visibilityOfLightSampleTransparency(RenderState& state, const glm::vec
 glm::vec3 computeContributionPointLight(RenderState& state, const PointLight& light, const Ray& ray, const HitInfo& hitInfo)
 {
     // TODO: modify this function to incorporate visibility corerctly
-    glm::vec3 p = ray.origin + ray.t * ray.direction;
-    glm::vec3 l = glm::normalize(light.position - p);
-    glm::vec3 v = -ray.direction;
-    return computeShading(state, v, l, light.color, hitInfo);
+    glm::vec3 lightColor = visibilityOfLightSample(state, light.position, lightColor, ray, hitInfo);
+    if (lightColor != glm::vec3(0)) {
+        return computeShading(state, ray.direction, light.position - (ray.origin + ray.t * ray.direction), lightColor, hitInfo);
+    }
+    return glm::vec3(0);
 }
 
-// TODO: Standard feature
+// Standard feature
 // Given a single segment light, compute its contribution towards an incident ray at an intersection point
 // by integrating over the segment, taking `numSamples` samples from the light source.
 //
@@ -140,11 +147,22 @@ glm::vec3 computeContributionPointLight(RenderState& state, const PointLight& li
 // This method is unit-tested, so do not change the function signature.
 glm::vec3 computeContributionSegmentLight(RenderState& state, const SegmentLight& light, const Ray& ray, const HitInfo& hitInfo, uint32_t numSamples)
 {
-    // TODO: implement this function; repeat numSamples times:
+    // implement this function; repeat numSamples times:
     // - sample the segment light
     // - test the sample's visibility
     // - then evaluate the phong model
-    return glm::vec3(0);
+    glm::vec3 accLight = glm::vec3(0);
+    for (int i = 0; i < numSamples; i++) {
+        float alfa = i / (numSamples - 1);
+        glm::vec3 lightPos = glm::vec3(0);
+        glm::vec3 lightColor = glm::vec3(0);
+        sampleSegmentLight(alfa, light, lightPos, lightColor);
+        lightColor = visibilityOfLightSample(state, lightPos, lightColor, ray, hitInfo);
+        if (lightColor != glm::vec3(0)) {
+            accLight += computeShading(state, ray.direction, lightPos - (ray.origin + ray.t * ray.direction), lightColor, hitInfo);
+        }
+    }
+    return accLight;
 }
 
 // TODO: Standard feature
