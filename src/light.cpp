@@ -153,7 +153,7 @@ glm::vec3 computeContributionSegmentLight(RenderState& state, const SegmentLight
     // - then evaluate the phong model
     glm::vec3 accLight = glm::vec3(0);
     for (int i = 0; i < numSamples; i++) {
-        float alfa = i / (numSamples - 1);
+        float alfa = state.sampler.next_1d();
         glm::vec3 lightPos = glm::vec3(0);
         glm::vec3 lightColor = glm::vec3(0);
         sampleSegmentLight(alfa, light, lightPos, lightColor);
@@ -162,10 +162,10 @@ glm::vec3 computeContributionSegmentLight(RenderState& state, const SegmentLight
             accLight += computeShading(state, -ray.direction, glm::normalize(lightPos - (ray.origin + ray.t * ray.direction)), lightColor, hitInfo);
         }
     }
-    return accLight;
+    return accLight / glm::vec3(numSamples);
 }
 
-// TODO: Standard feature
+// Standard feature
 // Given a single parralelogram light, compute its contribution towards an incident ray at an intersection point
 // by integrating over the parralelogram, taking `numSamples` samples from the light source, and applying
 // shading.
@@ -185,11 +185,22 @@ glm::vec3 computeContributionSegmentLight(RenderState& state, const SegmentLight
 // This method is unit-tested, so do not change the function signature.
 glm::vec3 computeContributionParallelogramLight(RenderState& state, const ParallelogramLight& light, const Ray& ray, const HitInfo& hitInfo, uint32_t numSamples)
 {
-    // TODO: implement this function; repeat numSamples times:
+    // implement this function; repeat numSamples times:
     // - sample the parallellogram light
     // - test the sample's visibility
     // - then evaluate the phong model
-    return glm::vec3(0);
+    glm::vec3 accLight = glm::vec3(0);
+    for (int i = 0; i < numSamples; i++) {
+        glm::vec2 alfa = state.sampler.next_2d();
+        glm::vec3 lightPos = glm::vec3(0);
+        glm::vec3 lightColor = glm::vec3(0);
+        sampleParallelogramLight(alfa, light, lightPos, lightColor);
+        lightColor = visibilityOfLightSample(state, lightPos, lightColor, ray, hitInfo);
+        if (lightColor != glm::vec3(0)) {
+            accLight += computeShading(state, -ray.direction, glm::normalize(lightPos - (ray.origin + ray.t * ray.direction)), lightColor, hitInfo);
+        }
+    }
+    return accLight / glm::vec3(numSamples);
 }
 
 // This function is provided as-is. You do not have to implement it.
