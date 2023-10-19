@@ -121,9 +121,9 @@ glm::vec3 visibilityOfLightSampleTransparency(RenderState& state, const glm::vec
 glm::vec3 computeContributionPointLight(RenderState& state, const PointLight& light, const Ray& ray, const HitInfo& hitInfo)
 {
     // TODO: modify this function to incorporate visibility corerctly
-    glm::vec3 lightColor = visibilityOfLightSample(state, light.position, lightColor, ray, hitInfo);
+    glm::vec3 lightColor = visibilityOfLightSample(state, light.position, light.color, ray, hitInfo);
     if (lightColor != glm::vec3(0)) {
-        return computeShading(state, ray.direction, light.position - (ray.origin + ray.t * ray.direction), lightColor, hitInfo);
+        return computeShading(state, -ray.direction, glm::normalize(light.position - (ray.origin + ray.t * ray.direction)), lightColor, hitInfo);
     }
     return glm::vec3(0);
 }
@@ -159,7 +159,7 @@ glm::vec3 computeContributionSegmentLight(RenderState& state, const SegmentLight
         sampleSegmentLight(alfa, light, lightPos, lightColor);
         lightColor = visibilityOfLightSample(state, lightPos, lightColor, ray, hitInfo);
         if (lightColor != glm::vec3(0)) {
-            accLight += computeShading(state, ray.direction, lightPos - (ray.origin + ray.t * ray.direction), lightColor, hitInfo);
+            accLight += computeShading(state, -ray.direction, glm::normalize(lightPos - (ray.origin + ray.t * ray.direction)), lightColor, hitInfo);
         }
     }
     return accLight;
