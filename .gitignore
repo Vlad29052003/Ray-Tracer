@@ -3,3 +3,5 @@ out/
 build/
 .vscode/
 .vs/
+.idea/
+cmake-build-debug/
