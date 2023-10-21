@@ -11,6 +11,7 @@
 #include <chrono>
 #include <framework/opengl_includes.h>
 #include <iostream>
+#include <algorithm>
 
 
 // Helper method to fill in hitInfo object. This can be safely ignored (or extended).
@@ -109,8 +110,12 @@ uint32_t BVH::nextNodeIdx()
 // This method is unit-tested, so do not change the function signature.
 AxisAlignedBox computePrimitiveAABB(const BVHInterface::Primitive primitive)
 {
-    return { .lower = glm::vec3(0), .upper = glm::vec3(0) };
+    glm::vec3 min = glm::min(primitive.v0.position, glm::min(primitive.v1.position, primitive.v2.position));
+    glm::vec3 max = glm::max(primitive.v0.position, glm::max(primitive.v1.position, primitive.v2.position));
+
+    return { .lower = min, .upper = max };
 }
+
 
 // TODO: Standard feature
 // Given a range of BVH triangles, compute an axis-aligned bounding box around the range.
@@ -119,8 +124,17 @@ AxisAlignedBox computePrimitiveAABB(const BVHInterface::Primitive primitive)
 // This method is unit-tested, so do not change the function signature.
 AxisAlignedBox computeSpanAABB(std::span<const BVHInterface::Primitive> primitives)
 {
-    return { .lower = glm::vec3(0), .upper = glm::vec3(0) };
+    glm::vec3 min(FLT_MAX, FLT_MAX, FLT_MAX);
+    glm::vec3 max(FLT_MIN, FLT_MIN, FLT_MIN);
+
+    for (const auto& primitive : primitives) {
+        AxisAlignedBox individualAABB = computePrimitiveAABB(primitive);
+        min = glm::min(min, individualAABB.lower);
+        max = glm::max(max, individualAABB.upper);
+    }
+    return { .lower = min, .upper = max };
 }
+
 
 // TODO: Standard feature
 // Given a BVH triangle, compute the geometric centroid of the triangle
@@ -129,7 +143,7 @@ AxisAlignedBox computeSpanAABB(std::span<const BVHInterface::Primitive> primitiv
 // This method is unit-tested, so do not change the function signature.
 glm::vec3 computePrimitiveCentroid(const BVHInterface::Primitive primitive)
 {
-    return glm::vec3(0);
+    return (primitive.v0.position + primitive.v1.position + primitive.v2.position) / 3.0f;
 }
 
 // TODO: Standard feature
@@ -140,7 +154,15 @@ glm::vec3 computePrimitiveCentroid(const BVHInterface::Primitive primitive)
 // This method is unit-tested, so do not change the function signature.
 uint32_t computeAABBLongestAxis(const AxisAlignedBox& aabb)
 {
-    return 0;
+    glm::vec3 dimensions = aabb.upper - aabb.lower;
+
+    if (dimensions.x >= dimensions.y && dimensions.x >= dimensions.z) {
+        return 0;
+    } else if (dimensions.y >= dimensions.x && dimensions.y >= dimensions.z) {
+        return 1;
+    } else {
+        return 2;
+    }
 }
 
 // TODO: Standard feature
@@ -157,7 +179,16 @@ size_t splitPrimitivesByMedian(const AxisAlignedBox& aabb, uint32_t axis, std::s
 {
     using Primitive = BVHInterface::Primitive;
 
-    return 0; // This is clearly not the solution
+    std::sort(primitives.begin(), primitives.end(),
+        [axis](const Primitive& a, const Primitive& b) {
+            glm::vec3 centroidA = computePrimitiveCentroid(a);
+            glm::vec3 centroidB = computePrimitiveCentroid(b);
+            return centroidA[axis] < centroidB[axis];
+        });
+
+    size_t medianIndex = primitives.size() / 2;
+
+    return medianIndex;
 }
 
 // TODO: Standard feature
@@ -165,7 +196,7 @@ size_t splitPrimitivesByMedian(const AxisAlignedBox& aabb, uint32_t axis, std::s
 // you must implement this method and implement it carefully!
 //
 // If `features.enableAccelStructure` is not enabled, the method should just iterate the BVH's
-// underlying primitives (or the scene's geometry). The default imlpementation already does this.
+// underlying primitives (or the scene's geometry). The default implementation already does this.
 // You will have to implement the part which actually traverses the BVH for a faster intersect,
 // given that `features.enableAccelStructure` is enabled.
 //
