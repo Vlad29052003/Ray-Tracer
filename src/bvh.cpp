@@ -221,8 +221,6 @@ bool intersectRayWithBVH(RenderState& state, const BVHInterface& bvh, Ray& ray, 
     std::span<const Node> nodes = bvh.nodes();
     std::span<const Primitive> primitives = bvh.primitives();
 
-    Node root = nodes[0];
-
     // Return value
     bool is_hit = false;
 
@@ -243,13 +241,30 @@ bool intersectRayWithBVH(RenderState& state, const BVHInterface& bvh, Ray& ray, 
         //
         // Note that it is entirely possible for a ray to hit a leaf node, but not its primitives,
         // and it is likewise possible for a ray to hit both children of a node.
-        std::stack<Node> s;
-        s.push(root);
+        std::stack<uint32_t> s;
+        s.push(0);
 
         while(!s.empty()) {
-            Node n = s.top();
+            Node node = nodes[s.top()];
             s.pop();
 
+            if(intersectRayWithShape(node.aabb, ray)) {
+                if(node.isLeaf()) {
+                    for(int i = node.primitiveOffset(); i < node.primitiveOffset() + node.primitiveCount(); ++i) {
+                        Primitive prim = primitives[i];
+                        const auto& [v0, v1, v2] = std::tie(prim.v0, prim.v1, prim.v2);
+                        if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
+                            updateHitInfo(state, prim, ray, hitInfo);
+                            is_hit = true;
+                        }
+                    }
+                } else {
+                    if(intersectRayWithShape(nodes[node.leftChild()].aabb, ray))
+                        s.push(node.leftChild());
+                    if(intersectRayWithShape(nodes[node.rightChild()].aabb, ray))
+                        s.push(node.rightChild());
+                }
+            }
         }
     } else {
         // Naive implementation; simply iterates over all primitives
@@ -281,11 +296,12 @@ bool intersectRayWithBVH(RenderState& state, const BVHInterface& bvh, Ray& ray, 
 BVH::Node BVH::buildLeafData(const Scene& scene, const Features& features, const AxisAlignedBox& aabb, std::span<Primitive> primitives)
 {
     Node node;
-    // TODO fill in the leaf's data; refer to `bvh_interface.h` for details
-
-    // Copy the current set of primitives to the back of the primitives vector
+    node.aabb = aabb;
+    uint32_t primitiveOffset = static_cast<uint32_t>(m_primitives.size());
+    uint32_t primitiveCount = static_cast<uint32_t>(primitives.size());
+    node.data[0] = primitiveOffset | Node::LeafBit;
+    node.data[1] = primitiveCount;
     std::copy(primitives.begin(), primitives.end(), std::back_inserter(m_primitives));
-
     return node;
 }
 
@@ -301,7 +317,9 @@ BVH::Node BVH::buildLeafData(const Scene& scene, const Features& features, const
 BVH::Node BVH::buildNodeData(const Scene& scene, const Features& features, const AxisAlignedBox& aabb, uint32_t leftChildIndex, uint32_t rightChildIndex)
 {
     Node node;
-    // TODO fill in the node's data; refer to `bvh_interface.h` for details
+    node.aabb = aabb;
+    node.data[0] = leftChildIndex;
+    node.data[1] = rightChildIndex;
     return node;
 }
 
