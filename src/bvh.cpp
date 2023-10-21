@@ -12,6 +12,7 @@
 #include <framework/opengl_includes.h>
 #include <iostream>
 #include <algorithm>
+#include <stack>
 
 
 // Helper method to fill in hitInfo object. This can be safely ignored (or extended).
@@ -212,9 +213,15 @@ size_t splitPrimitivesByMedian(const AxisAlignedBox& aabb, uint32_t axis, std::s
 // This method is unit-tested, so do not change the function signature.
 bool intersectRayWithBVH(RenderState& state, const BVHInterface& bvh, Ray& ray, HitInfo& hitInfo)
 {
+
+    using Node = BVHInterface::Node;
+    using Primitive = BVHInterface::Primitive;
+
     // Relevant data in the constructed BVH
-    std::span<const BVHInterface::Node> nodes = bvh.nodes();
-    std::span<const BVHInterface::Primitive> primitives = bvh.primitives();
+    std::span<const Node> nodes = bvh.nodes();
+    std::span<const Primitive> primitives = bvh.primitives();
+
+    Node root = nodes[0];
 
     // Return value
     bool is_hit = false;
@@ -236,6 +243,14 @@ bool intersectRayWithBVH(RenderState& state, const BVHInterface& bvh, Ray& ray, 
         //
         // Note that it is entirely possible for a ray to hit a leaf node, but not its primitives,
         // and it is likewise possible for a ray to hit both children of a node.
+        std::stack<Node> s;
+        s.push(root);
+
+        while(!s.empty()) {
+            Node n = s.top();
+            s.pop();
+
+        }
     } else {
         // Naive implementation; simply iterates over all primitives
         for (const auto& prim : primitives) {
