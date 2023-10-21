@@ -13,6 +13,7 @@
 #include <iostream>
 #include <algorithm>
 #include <stack>
+#include <queue>
 
 
 // Helper method to fill in hitInfo object. This can be safely ignored (or extended).
@@ -343,7 +344,7 @@ void BVH::buildRecursive(const Scene& scene, const Features& features, std::span
     // WARNING: always use nodeIndex to index into the m_nodes array. never hold a reference/pointer,
     // because a push/emplace (in ANY recursive calls) might grow vectors, invalidating the pointers.
 
-    // Compute the AABB of the current node.
+    // Compute the AABB of the current node.=
     AxisAlignedBox aabb = computeSpanAABB(primitives);
 
     // As a starting point, we provide an implementation which creates a single leaf, and stores
@@ -364,35 +365,86 @@ void BVH::buildRecursive(const Scene& scene, const Features& features, std::span
     //        (hint; use `std::span::subspan()` to split into left/right ranges)
 
     // Just configure the current node as a giant leaf for now
-    m_nodes[nodeIndex] = buildLeafData(scene, features, aabb, primitives);
+
+      if(primitives.size() <= LeafSize) {
+        m_nodes[nodeIndex] = buildLeafData(scene, features, aabb, primitives);
+      }
+      else {
+        size_t idx = splitPrimitivesByMedian(aabb, computeAABBLongestAxis(aabb), primitives);
+        uint32_t left = nextNodeIdx();
+        buildRecursive(scene, features, primitives.subspan(0, idx), left);
+        uint32_t right = nextNodeIdx();
+        buildRecursive(scene, features, primitives.subspan(idx), right);
+        m_nodes[nodeIndex] = buildNodeData(scene, features, aabb, left, right);
+      }
 }
 
+int maxDepth(BVHInterface::Node node, std::vector<BVHInterface::Node> nodes)
+{
+    if (node.isLeaf()){
+        return 1;
+    }
+    else {
+        int lDepth = maxDepth(nodes[node.leftChild()], nodes);
+        int rDepth = maxDepth(nodes[node.rightChild()], nodes);
+        if (lDepth > rDepth)
+            return (lDepth + 1);
+        else
+            return (rDepth + 1);
+    }
+}
 // TODO: Standard feature, or part of it
 // Compute the nr. of levels in your hierarchy after construction; useful for `debugDrawLevel()`
 // You are free to modify this function's signature, as long as the constructor builds a BVH
 void BVH::buildNumLevels()
 {
-    m_numLevels = 1;
+    m_numLevels = maxDepth(m_nodes[0], m_nodes);
 }
 
 // Compute the nr. of leaves in your hierarchy after construction; useful for `debugDrawLeaf()`
 // You are free to modify this function's signature, as long as the constructor builds a BVH
-void BVH::buildNumLeaves()
-{
-    m_numLeaves = 1;
+void BVH::buildNumLeaves() {
+    m_numLeaves = 0;
+    for(auto node: m_nodes) {
+        if(node.isLeaf()) m_numLeaves++;
+    }
 }
 
 // Draw the bounding boxes of the nodes at the selected level. Use this function to visualize nodes
 // for debugging. You may wish to implement `buildNumLevels()` first. We suggest drawing the AABB
 // of all nodes on the selected level.
 // You are free to modify this function's signature.
-void BVH::debugDrawLevel(int level)
+void BVH::debugDrawLevel(int l)
 {
     // Example showing how to draw an AABB as a (white) wireframe box.
     // Hint: use draw functions (see `draw.h`) to draw the contained boxes with different
     // colors, transparencies, etc.
-    AxisAlignedBox aabb { .lower = glm::vec3(0.0f), .upper = glm::vec3(0.0f, 1.05f, 1.05f) };
-    drawAABB(aabb, DrawMode::Wireframe, glm::vec3(0.05f, 1.0f, 0.05f), 0.1f);
+    std::vector<Node> levelNodes;
+    std::queue<std::pair<Node, int>> q;
+    q.push({m_nodes[0], 0});
+
+    while (!q.empty()) {
+        Node current_node = q.front().first;
+        int current_level = q.front().second;
+        q.pop();
+
+        if (current_level == l) {
+            drawAABB(current_node.aabb, DrawMode::Wireframe, glm::vec3(0, 1.0f, 1.0f), 0.4f);
+        }
+
+        if (current_level > l) {
+            break;
+        }
+
+        if (!current_node.isLeaf()) {
+            if (current_node.leftChild() != -1) {
+                q.push({m_nodes[current_node.leftChild()], current_level + 1});
+            }
+            if (current_node.rightChild() != -1) {
+                q.push({m_nodes[current_node.rightChild()], current_level + 1});
+            }
+        }
+    }
 }
 
 // Draw data of the leaf at the selected index. Use this function to visualize leaf nodes
@@ -405,6 +457,10 @@ void BVH::debugDrawLeaf(int leafIndex)
 {
     // Example showing how to draw an AABB as a (white) wireframe box.
     // Hint: use drawTriangle (see `draw.h`) to draw the contained primitives
-    AxisAlignedBox aabb { .lower = glm::vec3(0.0f), .upper = glm::vec3(0.0f, 1.05f, 1.05f) };
-    drawAABB(aabb, DrawMode::Wireframe, glm::vec3(0.05f, 1.0f, 0.05f), 0.1f);
+    int i = 0;
+        while(leafIndex > 0 && i < m_nodes.size()) {
+            if(m_nodes[i].isLeaf()) leafIndex--;
+            i++;
+        }
+        drawAABB(m_nodes[i-1].aabb, DrawMode::Wireframe, glm::vec3(1.0f, 0, 0), 0.9f);
 }
