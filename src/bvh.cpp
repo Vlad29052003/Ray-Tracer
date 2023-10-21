@@ -187,10 +187,9 @@ size_t splitPrimitivesByMedian(const AxisAlignedBox& aabb, uint32_t axis, std::s
             glm::vec3 centroidB = computePrimitiveCentroid(b);
             return centroidA[axis] < centroidB[axis];
         });
-
     size_t medianIndex = primitives.size() / 2;
 
-    return medianIndex;
+    return primitives.size() % 2 == 1 ? medianIndex + 1 : medianIndex;
 }
 
 // TODO: Standard feature
@@ -249,15 +248,17 @@ bool intersectRayWithBVH(RenderState& state, const BVHInterface& bvh, Ray& ray, 
             Node node = nodes[s.top()];
             s.pop();
 
+//            drawAABB(node.aabb, DrawMode::Wireframe, glm::vec3(1.0f, 1.0f, 0), 0.9f);
+
             if(intersectRayWithShape(node.aabb, ray)) {
                 if(node.isLeaf()) {
                     for(int i = node.primitiveOffset(); i < node.primitiveOffset() + node.primitiveCount(); ++i) {
-                        Primitive prim = primitives[i];
-                        const auto& [v0, v1, v2] = std::tie(prim.v0, prim.v1, prim.v2);
+                        const auto& [v0, v1, v2] = std::tie(primitives[i].v0, primitives[i].v1, primitives[i].v2);
                         if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
-                            updateHitInfo(state, prim, ray, hitInfo);
+                            updateHitInfo(state, primitives[i], ray, hitInfo);
                             is_hit = true;
                         }
+
                     }
                 } else {
                     if(intersectRayWithShape(nodes[node.leftChild()].aabb, ray))
