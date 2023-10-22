@@ -225,49 +225,31 @@ bool intersectRayWithBVH(RenderState& state, const BVHInterface& bvh, Ray& ray, 
     bool is_hit = false;
 
     if (state.features.enableAccelStructure) {
-        // TODO: implement here your (probably stack-based) BVH traversal.
-        //
-        // Some hints (refer to bvh_interface.h either way). BVH nodes are packed, so the
-        // data is not easily extracted. Helper methods are available, however:
-        // - For a given node, you can test if the node is a leaf with `node.isLeaf()`.
-        // - If the node is not a leaf, you can obtain the left/right children with `node.leftChild()` etc.
-        // - If the node is a leaf, you can obtain the offset to and nr. of primitives in the bvh's list
-        //   of underlying primitives with `node.primitiveOffset()` and `node.primitiveCount()`
-        //
-        // In short, you will have to step down the bvh, node by node, and intersect your ray
-        // with the node's AABB. If this intersection passes, you should:
-        // - if the node is a leaf, intersect with the leaf's primitives
-        // - if the node is not a leaf, test the left and right children as well!
-        //
-        // Note that it is entirely possible for a ray to hit a leaf node, but not its primitives,
-        // and it is likewise possible for a ray to hit both children of a node.
+        float prev = ray.t;
         std::stack<uint32_t> s;
         s.push(0);
 
-        while(!s.empty()) {
+        while (!s.empty()) {
             Node node = nodes[s.top()];
             s.pop();
 
-//            drawAABB(node.aabb, DrawMode::Wireframe, glm::vec3(1.0f, 1.0f, 0), 0.9f);
-
-            if(intersectRayWithShape(node.aabb, ray)) {
-                if(node.isLeaf()) {
-                    for(int i = node.primitiveOffset(); i < node.primitiveOffset() + node.primitiveCount(); ++i) {
-                        const auto& [v0, v1, v2] = std::tie(primitives[i].v0, primitives[i].v1, primitives[i].v2);
-                        if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
-                            updateHitInfo(state, primitives[i], ray, hitInfo);
-                            is_hit = true;
-                        }
-
+            if (node.isLeaf()) {
+                for (int i = node.primitiveOffset(); i < node.primitiveOffset() + node.primitiveCount(); ++i) {
+                    if (intersectRayWithTriangle(primitives[i].v0.position, primitives[i].v1.position, primitives[i].v2.position, ray, hitInfo)) {
+                        updateHitInfo(state, primitives[i], ray, hitInfo);
                     }
-                } else {
-                    if(intersectRayWithShape(nodes[node.leftChild()].aabb, ray))
-                        s.push(node.leftChild());
-                    if(intersectRayWithShape(nodes[node.rightChild()].aabb, ray))
-                        s.push(node.rightChild());
+                }
+            } else {
+                float previous = ray.t;
+                if (intersectRayWithShape(node.aabb, ray)) {
+                    ray.t = previous;
+                    s.push(node.rightChild());
+                    s.push(node.leftChild());
                 }
             }
         }
+        if(prev > ray.t)
+                is_hit = true;
     } else {
         // Naive implementation; simply iterates over all primitives
         for (const auto& prim : primitives) {
@@ -282,7 +264,6 @@ bool intersectRayWithBVH(RenderState& state, const BVHInterface& bvh, Ray& ray, 
     // Intersect with spheres.
     for (const auto& sphere : state.scene.spheres)
         is_hit |= intersectRayWithShape(sphere, ray, hitInfo);
-
     return is_hit;
 }
 
@@ -405,10 +386,11 @@ void BVH::buildNumLevels()
 // Compute the nr. of leaves in your hierarchy after construction; useful for `debugDrawLeaf()`
 // You are free to modify this function's signature, as long as the constructor builds a BVH
 void BVH::buildNumLeaves() {
-    m_numLeaves = 0;
+    uint32_t cnt = 0;
     for(auto node: m_nodes) {
-        if(node.isLeaf()) m_numLeaves++;
+        if(node.isLeaf()) cnt++;
     }
+    m_numLeaves = cnt;
 }
 
 // Draw the bounding boxes of the nodes at the selected level. Use this function to visualize nodes
@@ -430,7 +412,7 @@ void BVH::debugDrawLevel(int l)
         q.pop();
 
         if (current_level == l) {
-            drawAABB(current_node.aabb, DrawMode::Wireframe, glm::vec3(0, 1.0f, 1.0f), 0.4f);
+            drawAABB(current_node.aabb, DrawMode::Wireframe, glm::vec3(0.5f, 1.0f, 0.5f), 1.0f);
         }
 
         if (current_level > l) {
@@ -456,8 +438,6 @@ void BVH::debugDrawLevel(int l)
 // You are free to modify this function's signature.
 void BVH::debugDrawLeaf(int leafIndex)
 {
-    // Example showing how to draw an AABB as a (white) wireframe box.
-    // Hint: use drawTriangle (see `draw.h`) to draw the contained primitives
     int i = 0;
         while(leafIndex > 0 && i < m_nodes.size()) {
             if(m_nodes[i].isLeaf()) leafIndex--;
