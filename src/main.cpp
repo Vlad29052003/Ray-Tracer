@@ -194,7 +194,7 @@ int main(int argc, char** argv)
                     uint32_t minSamples = 1u, maxSamples = 64u;
                     ImGui::SliderFloat("Focal distance", &config.features.extra.focusDistance, 0.1f, 100.0f, "%.1f", 10.0f);
                     ImGui::SliderScalar("Dof samples", ImGuiDataType_U32, &config.features.extra.numDofSamples, &minSamples, &maxSamples);
-                    ImGui::SliderFloat("Aperture size", &config.features.extra.aperture, 0.01f, 10.0f, "%.01f", 2.0f);
+                    ImGui::SliderFloat("Aperture size", &config.features.extra.aperture, 0.0f, 10.0f, "%.2f", 2.0f);
                     ImGui::Unindent();
                 }
                 ImGui::Checkbox("Motion blur", &config.features.extra.enableMotionBlur);
