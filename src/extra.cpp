@@ -48,7 +48,7 @@ void postprocessImageWithBloom(const Scene& scene, const Features& features, con
 }
 
 
-// TODO; Extra feature
+// Extra feature
 // Given a camera ray (or reflected camera ray) and an intersection, evaluates the contribution of a set of
 // glossy reflective rays, recursively evaluating renderRay(..., depth + 1) along each ray, and adding the
 // results times material.ks to the current intersection's hit color.
@@ -64,6 +64,49 @@ void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInf
     // Generate an initial specular ray, and base secondary glossies on this ray
     // auto numSamples = state.features.extra.numGlossySamples;
     // ...
+
+    Ray r = generateReflectionRay(ray, hitInfo);
+
+    //generate orthogonal vectors u and v
+    //we can generate the first othogonal vector manually and the second using cross product
+    glm::vec3 u = glm::vec3(0), v = glm::vec3(0);
+    if (r.direction.x != 0) {
+        u.z = -r.direction.x;
+        u.x = r.direction.z;
+    } else if (r.direction.y != 0) {
+        u.z = -r.direction.y;
+        u.y = r.direction.z;
+    } else {
+        u.z = r.direction.y;
+        u.y = -r.direction.z;
+    }
+
+    v = glm::cross(u, ray.direction);
+
+    u = glm::normalize(u);
+    v = glm::normalize(v);
+
+    //calculate the regulation factor that will be applied to the initial radius of 1
+    float regulationFactor = hitInfo.material.shininess / 64.0f;
+
+    glm::vec3 sumOfInterference = glm::vec3(0);
+
+    for (int i = 0; i < state.features.extra.numGlossySamples; ++i) {
+        //map a uniformly distributed 2d sample to the coordinates of a circle, using the regulation factor
+        glm::vec2 sample = state.sampler.next_2d();
+        float x = regulationFactor * glm::cos(glm::radians(360.f * sample.x));
+        float y = regulationFactor * glm::sin(glm::radians(360.f * sample.y));
+
+        glm::vec3 glossyReflectionRayDirection = r.direction + x * u + y * v;
+        Ray glossyReflectionRay = Ray(r.origin, glossyReflectionRayDirection, std::numeric_limits<float>::max());
+
+        //sum up the conttributions of each ray
+        sumOfInterference += renderRay(state, glossyReflectionRay, rayDepth + 1) * hitInfo.material.ks;
+    }
+
+    //hormalize the sum of the rays and add the result to the current color
+    sumOfInterference /= state.features.extra.numGlossySamples;
+    hitColor += sumOfInterference;
 }
 
 // TODO; Extra feature

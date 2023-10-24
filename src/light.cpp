@@ -73,12 +73,12 @@ bool visibilityOfLightSampleBinary(RenderState& state, const glm::vec3& lightPos
         return true;
     } else {
         // Shadows are enabled in the renderer
-        glm::vec3 origin = ray.origin + (ray.t - 10 * FLT_EPSILON) * ray.direction;
+        glm::vec3 origin = ray.origin + (ray.t - 100 * FLT_EPSILON) * ray.direction;
         glm::vec3 direction = lightPosition - origin;
         Ray lightVisibilityRay = Ray(origin, direction, std::numeric_limits<float>::max());
         HitInfo intersectionHitInfo = HitInfo(glm::vec3(0), glm::vec3(0), glm::vec2(0), Material(glm::vec3(0)));
         bool intersected = state.bvh.intersect(state, lightVisibilityRay, intersectionHitInfo);
-        if (lightVisibilityRay.t >= (1.0f - 10 * FLT_EPSILON))
+        if (lightVisibilityRay.t >= (1.0f - 100 * FLT_EPSILON))
             return true;
         return false;
     }
