@@ -29,13 +29,15 @@ void renderImageWithDepthOfField(const Scene& scene, const BVHInterface& bvh, co
         for (int x = 0; x < screen.resolution().x; x++) {
             glm::vec3 L = glm::vec3(0);
             for (int samp = 0; samp < features.extra.numDofSamples; samp++) {
+                //generate random sample -> represents the position on the square lens
                 float xLens = features.extra.aperture * distribution(generator);
                 float yLens = features.extra.aperture * distribution(generator);
-                glm::vec2 position = (glm::vec2(x, y) + 0.5f) / glm::vec2(screen.resolution()) * 2.f - 1.f;
-                Ray ray = camera.generateRay(position);
-                glm::vec3 focalPoint = ray.origin + features.extra.focusDistance * ray.direction;
-                ray.origin += glm::vec3(xLens, yLens, 0);
-                ray.direction = glm::normalize(focalPoint - ray.origin);
+
+                glm::vec2 position = (glm::vec2(x, y) + 0.5f) / glm::vec2(screen.resolution()) * 2.f - 1.f; //position on the screen
+                Ray ray = camera.generateRay(position); //the ray from the pixel center
+                glm::vec3 focalPoint = ray.origin + features.extra.focusDistance * ray.direction; //calculate the focal point
+                ray.origin += xLens * glm::normalize(camera.left()) + yLens * glm::normalize(camera.up()); //shift the origin of the ray on the lens aperture
+                ray.direction = glm::normalize(focalPoint - ray.origin); // calculate the direction (towards the focal point)
                 RenderState state = {
                     .scene = scene,
                     .features = features,
