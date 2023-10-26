@@ -88,6 +88,8 @@ glm::vec3 computePhongModel(RenderState& state, const glm::vec3& cameraDirection
     // diffuse
     auto D = computeLambertianModel(state, cameraDirection, lightDirection, lightColor, hitInfo);
     // specular
+    if (D == glm::vec3(0))
+        return glm::vec3(0);
     auto L = normalize(lightDirection);
     auto reflected_light = normalize(2.0f * dot(hitInfo.normal, L) * hitInfo.normal - L);
     auto cos_phi = dot(reflected_light, normalize(cameraDirection));
@@ -114,6 +116,8 @@ glm::vec3 computePhongModel(RenderState& state, const glm::vec3& cameraDirection
 glm::vec3 computeBlinnPhongModel(RenderState& state, const glm::vec3& cameraDirection, const glm::vec3& lightDirection, const glm::vec3& lightColor, const HitInfo& hitInfo)
 {
     auto D = computeLambertianModel(state, cameraDirection, lightDirection, lightColor, hitInfo);
+    if (D == glm::vec3(0))
+        return glm::vec3(0);
 
     auto H = normalize(normalize(cameraDirection) + normalize(lightDirection));
     float temp = dot(H, hitInfo.normal);
