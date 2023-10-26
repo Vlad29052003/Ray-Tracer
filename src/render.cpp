@@ -85,6 +85,8 @@ std::vector<Ray> generatePixelRaysMultisampled(RenderState& state, const Trackba
     // Hint; use `state.sampler.next*d()` to generate random samples in [0, 1).
     auto numSamples = state.features.numPixelSamples;
     std::vector<Ray> rays;
+    for (auto i = 0; i < numSamples; i++)
+        rays.push_back(camera.generateRay(pixel));
     // ...
     return rays;
 }
