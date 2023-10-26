@@ -19,8 +19,8 @@ glm::vec3 sampleTextureNearest(const Image& image, const glm::vec2& texCoord)
     // The pixel are stored in a 1D array of row major order
     // you can convert from position (i,j) to an index using the method seen in the lecture
     // Note, the center of the first pixel is at image coordinates (0.5, 0.5)
-    int i = (1.0f - texCoord.x) * image.width;
-    int j = (1.0f - texCoord.y) * image.height;
+    int i = floor(texCoord.x * image.width);
+    int j = floor(texCoord.y * image.height);
 
     return image.pixels[j * image.width + i];
 }
@@ -44,7 +44,35 @@ glm::vec3 sampleTextureBilinear(const Image& image, const glm::vec2& texCoord)
     // Note, the center of the first pixel is at image coordinates (0.5, 0.5)
     //int i = (1.0f - texCoord.x) * image.width;
     //int j = (1.0f - texCoord.y) * image.height;
+    auto tempx = texCoord.x * image.width;
+    auto tempy = texCoord.y * image.height;
+    auto closer_x = 0, closer_y = 0;
 
+    if (image.width - tempx < tempx - 0)
+        closer_x = image.width;
+    if (image.height - tempy < tempy - 0)
+        closer_y = image.height;
+    glm::vec2 v0 = { 0, 0 };
+    glm::vec2 v1 = { image.width, 0 };
+    glm::vec2 v2 = { image.width, image.height };
+    glm::vec2 v3 = { 0, image.height };
 
-    return image.pixels[0];
+    glm::vec2 position;
+    if (closer_x == 0 && closer_y == 0) {
+        position = v0 * texCoord.x * texCoord.y + v2 * (1.0f - texCoord.x) * (1.0f - texCoord.y) + 
+            v1 * (1.0f -texCoord.x) * (texCoord.y) * v3 * (texCoord.x) * (1.0f - texCoord.y);
+    } else if (closer_x == 0 && closer_y == image.height) {
+        position = v0 * texCoord.x * (1.0f - texCoord.y) + v1 * (1.0f - texCoord.x) * (1.0f - texCoord.y) + 
+            v2 * (1.0f - texCoord.x) * texCoord.y * v3 * texCoord.x * texCoord.y;
+    } else if (closer_x == image.width && closer_y == 0) {
+        position = v0 * (1.0f - texCoord.x) * texCoord.y + v1 * texCoord.x * texCoord.y + 
+            v2 * texCoord.x * (1.0f - texCoord.y) + v3 * (1.0f - texCoord.x) * (1.0f - texCoord.y);
+    } else {
+        position = v0 * (1.0f - texCoord.x) * (1.0f - texCoord.y) + v1 * texCoord.x * (1.0f - texCoord.y) + 
+            v2 * texCoord.x * texCoord.y + v3 * (1.0f - texCoord.x) * texCoord.y;
+    }
+
+    auto i = floor(position.x);
+    auto j = floor(position.y);
+    return image.pixels[j * image.width + i];
 }
