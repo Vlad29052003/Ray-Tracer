@@ -88,7 +88,7 @@ Ray generateReflectionRay(Ray ray, HitInfo hitInfo)
 Ray generatePassthroughRay(Ray ray, HitInfo hitInfo)
 {
     // TODO: generate a passthrough ray
-    return Ray {};
+    return Ray { ray.origin + (ray.t - 10 * FLT_EPSILON) * ray.direction, ray.direction, 1.0f - hitInfo.material.transparency };
 }
 
 // Standard feature
