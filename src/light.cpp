@@ -102,16 +102,16 @@ bool visibilityOfLightSampleBinary(RenderState& state, const glm::vec3& lightPos
 glm::vec3 visibilityOfLightSampleTransparency(RenderState& state, const glm::vec3& lightPosition, const glm::vec3& lightColor, const Ray& ray, const HitInfo& hitInfo)
 {
     // TODO: implement this function; currently, the light simply passes through
-    glm::vec3 origin = ray.origin + (ray.t - 10 * FLT_EPSILON) * ray.direction;
+    glm::vec3 origin = ray.origin + (ray.t - 100 * FLT_EPSILON) * ray.direction;
     glm::vec3 direction = lightPosition - origin;
     Ray lightVisibilityRay = Ray(origin, direction, std::numeric_limits<float>::max());
     HitInfo intersectionHitInfo = HitInfo(glm::vec3(0), glm::vec3(0), glm::vec2(0), Material(glm::vec3(0)));
 
     bool intersected = state.bvh.intersect(state, lightVisibilityRay, intersectionHitInfo);
-    if (lightVisibilityRay.t >= (1.0f - 10 * FLT_EPSILON))
+    if (lightVisibilityRay.t >= (1.0f - 100 * FLT_EPSILON))
         return lightColor;
     else if (intersectionHitInfo.material.transparency < 1.0f) {
-        glm::vec3 recursiveOrigin = lightVisibilityRay.origin + (lightVisibilityRay.t + 10 * FLT_EPSILON) * lightVisibilityRay.direction;
+        glm::vec3 recursiveOrigin = lightVisibilityRay.origin + (lightVisibilityRay.t + 100 * FLT_EPSILON) * lightVisibilityRay.direction;
         Ray recursiveRay = Ray(recursiveOrigin, lightPosition - recursiveOrigin, std::numeric_limits<float>::max());
         HitInfo recursiveHitInfo = HitInfo(glm::vec3(0), glm::vec3(0), glm::vec2(0), Material(glm::vec3(0)));
         glm::vec3 recursiveLight = visibilityOfLightSampleTransparency(state, lightPosition, lightColor, recursiveRay, recursiveHitInfo);
