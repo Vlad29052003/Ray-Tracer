@@ -98,25 +98,24 @@ void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInf
     // auto numSamples = state.features.extra.numGlossySamples;
     // ...
 
-    Ray r = generateReflectionRay(ray, hitInfo);
+    Ray reflectedRay = generateReflectionRay(ray, hitInfo);
 
     //generate orthogonal vectors u and v
     //we can generate the first othogonal vector manually and the second using cross product
     glm::vec3 u = glm::vec3(0), v = glm::vec3(0);
-    if (r.direction.x != 0) {
-        u.z = -r.direction.x;
-        u.x = r.direction.z;
-    } else if (r.direction.y != 0) {
-        u.z = -r.direction.y;
-        u.y = r.direction.z;
+    if (reflectedRay.direction.x != 0) {
+        u.z = -reflectedRay.direction.x;
+        u.x = reflectedRay.direction.z;
+    } else if (reflectedRay.direction.y != 0) {
+        u.z = -reflectedRay.direction.y;
+        u.y = reflectedRay.direction.z;
     } else {
-        u.z = r.direction.y;
-        u.y = -r.direction.z;
+        u.z = reflectedRay.direction.y;
+        u.y = -reflectedRay.direction.z;
     }
+    u = glm::normalize(u);
 
     v = glm::cross(u, ray.direction);
-
-    u = glm::normalize(u);
     v = glm::normalize(v);
 
     //calculate the regulation factor that will be applied to the initial radius of 1
@@ -125,19 +124,23 @@ void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInf
     glm::vec3 sumOfInterference = glm::vec3(0);
 
     for (int i = 0; i < state.features.extra.numGlossySamples; ++i) {
-        //map a uniformly distributed 2d sample to the coordinates of a circle, using the regulation factor
-        glm::vec2 sample = state.sampler.next_2d();
-        float x = regulationFactor * glm::cos(glm::radians(360.f * sample.x));
-        float y = regulationFactor * glm::sin(glm::radians(360.f * sample.y));
+        //map a uniformly distributed 2d sample (essentially a square) into coordinates of a disc
+        //using FG-Squircular mapping (https://arxiv.org/ftp/arxiv/papers/1709/1709.07875.pdf)
+        glm::vec2 sample = state.sampler.next_2d() - glm::vec2(0.5f, 0.5f); // [0,1) to [-0.5, 0.5)
+        float sqRoot = sqrtf(sample.x * sample.x + sample.y * sample.y - sample.x * sample.y);
+        float length = sqrtf(sample.x * sample.x + sample.y * sample.y);
+        float ratio = (length != 0) ? (sqRoot / length) : sqRoot;
+        float x = regulationFactor * sample.x * ratio;
+        float y = regulationFactor * sample.y * ratio;
 
-        glm::vec3 glossyReflectionRayDirection = r.direction + x * u + y * v;
-        Ray glossyReflectionRay = Ray(r.origin, glossyReflectionRayDirection, std::numeric_limits<float>::max());
+        //shift the direction of the perfect reflection
+        glm::vec3 glossyReflectionRayDirection = reflectedRay.direction + x * u + y * v;
+        Ray glossyReflectionRay = Ray(reflectedRay.origin, glossyReflectionRayDirection, std::numeric_limits<float>::max());
 
         //sum up the conttributions of each ray
         sumOfInterference += renderRay(state, glossyReflectionRay, rayDepth + 1) * hitInfo.material.ks;
     }
-
-    //hormalize the sum of the rays and add the result to the current color
+    //normalize the sum of the rays and add the result to the current color
     sumOfInterference /= state.features.extra.numGlossySamples;
     hitColor += sumOfInterference;
 }
