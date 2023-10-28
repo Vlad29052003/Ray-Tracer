@@ -135,7 +135,19 @@ glm::vec3 computeBlinnPhongModel(RenderState& state, const glm::vec3& cameraDire
 // This method is unit-tested, so do not change the function signature.
 glm::vec3 LinearGradient::sample(float ti) const
 {
-    float max = components.at(0).t, min = components.at(0).t;
+    auto sortedComponents = components;
+    int j;
+    //sort
+    for (int i = components.size() - 1; i >= 0; i--) {
+        j = i - 1;
+        while(j >= 0 && components.at(j).t > components.at(i).t) {
+            sortedComponents.at(j + 1) = sortedComponents.at(j);
+            j--;
+        }
+        sortedComponents.at(j + 1) = components.at(i);
+    }
+
+    /*float max = components.at(0).t, min = components.at(0).t;
     Component maxComponent = components.at(0), minComponent = components.at(0);
 
     for (auto component : components) {
@@ -148,19 +160,21 @@ glm::vec3 LinearGradient::sample(float ti) const
             min = component.t;
             minComponent = component;
         }
-    }
+    }*/
 
-    if (ti <= min)
-        return minComponent.color;
-    else if (ti >= max)
-        return maxComponent.color;
+    if (ti <= sortedComponents.at(0).t)
+        return sortedComponents.at(0).color;
+    else if (ti >= sortedComponents.at(sortedComponents.size() - 1).t)
+        return sortedComponents.at(sortedComponents.size() - 1).color;
 
-    Component lower = components.at(0), upper = components.at(0);
+    Component lower = sortedComponents.at(0), upper = sortedComponents.at(0);
 
-    for (auto component : components) {
+    for (auto component : sortedComponents) {
+        if (component.t = ti)
+            return component.color;
         if (component.t > ti && component.t < upper.t)
             upper = component;
-        else if (component.t < ti && component.t > lower.t)
+        else if (component.t < ti)
             lower = component;
     }
 
@@ -188,7 +202,7 @@ glm::vec3 LinearGradient::sample(float ti) const
 glm::vec3 computeLinearGradientModel(RenderState& state, const glm::vec3& cameraDirection, const glm::vec3& lightDirection, const glm::vec3& lightColor, const HitInfo& hitInfo, const LinearGradient& gradient)
 {
     float cos_theta = glm::dot(lightDirection, hitInfo.normal);
-    auto D = gradient.sample(cos_theta) * lightColor;
+    auto D = gradient.sample(glm::max(cos_theta, 0.0f)) * lightColor;
 
     return D;
 }
