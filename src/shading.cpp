@@ -147,21 +147,6 @@ glm::vec3 LinearGradient::sample(float ti) const
         sortedComponents.at(j + 1) = components.at(i);
     }
 
-    /*float max = components.at(0).t, min = components.at(0).t;
-    Component maxComponent = components.at(0), minComponent = components.at(0);
-
-    for (auto component : components) {
-        if (ti = component.t)
-                return component.color;
-        if (component.t > max) {
-            max = component.t;
-            maxComponent = component;
-        } else if (component.t < min) {
-            min = component.t;
-            minComponent = component;
-        }
-    }*/
-
     if (ti <= sortedComponents.at(0).t)
         return sortedComponents.at(0).color;
     else if (ti >= sortedComponents.at(sortedComponents.size() - 1).t)
@@ -172,9 +157,10 @@ glm::vec3 LinearGradient::sample(float ti) const
     for (auto component : sortedComponents) {
         if (component.t = ti)
             return component.color;
-        if (component.t > ti && component.t < upper.t)
+        if (component.t > ti) {
             upper = component;
-        else if (component.t < ti)
+            break;
+        } else if (component.t < ti)
             lower = component;
     }
 
@@ -202,7 +188,7 @@ glm::vec3 LinearGradient::sample(float ti) const
 glm::vec3 computeLinearGradientModel(RenderState& state, const glm::vec3& cameraDirection, const glm::vec3& lightDirection, const glm::vec3& lightColor, const HitInfo& hitInfo, const LinearGradient& gradient)
 {
     float cos_theta = glm::dot(lightDirection, hitInfo.normal);
-    auto D = gradient.sample(glm::max(cos_theta, 0.0f)) * lightColor;
+    auto D = gradient.sample(cos_theta) * glm::max(cos_theta, 0.0f) * lightColor;
 
     return D;
 }
