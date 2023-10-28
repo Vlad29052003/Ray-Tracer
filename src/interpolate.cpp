@@ -12,10 +12,11 @@
 // This method is unit-tested, so do not change the function signature.
 glm::vec3 computeBarycentricCoord(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& p)
 {
-    auto coordinates = glm::vec3(0.0);
-    auto v0v1v2 = (1 / 2) * length(cross(v1 - v0, v2 - v1));
-    auto v1v2p = (1 / 2) * length(cross(v2 - v1, p - v2)); // https://www.youtube.com/watch?v=hQMbD2JT-qA
-    auto v0v2p = (1 / 2) * length(cross(v2 - v0, p - v2));
+    auto coordinates = glm::vec3(0.0f);
+
+    auto v0v1v2 = 0.5f * length(cross(v1 - v0, v2 - v0));
+    auto v1v2p = 0.5f * length(cross(v1 - p, v2 - p)); // https://www.youtube.com/watch?v=hqmbd2jt-qa
+    auto v0v2p = 0.5f * length(cross(v2 - p, v0 - p));
 
     coordinates.x = v1v2p / v0v1v2;
     coordinates.y = v0v2p / v0v1v2;
