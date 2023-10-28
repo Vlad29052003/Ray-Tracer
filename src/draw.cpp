@@ -198,3 +198,33 @@ void drawRay(const Ray& ray, const glm::vec3& color)
 
     glPopAttrib();
 }
+
+void drawDofLens(const float& lensSize, const glm::vec3& focusPoint, const glm::vec3& position, const glm::vec3& up, const glm::vec3& left)
+{
+    if (!enableDebugDraw)
+        return;
+
+    drawSphere(focusPoint, 0.005f, glm::vec3(1, 0, 1));
+    float halfLensSize = lensSize / 2.0f;
+
+    glm::vec3 topLeft = position + halfLensSize * up + halfLensSize * left;
+    glm::vec3 bottomLeft = position - halfLensSize * up + halfLensSize * left;
+    glm::vec3 topRight = position + halfLensSize * up - halfLensSize * left;
+    glm::vec3 bottomRight = position - halfLensSize * up - halfLensSize * left;
+    glm::vec3 normal = glm::normalize(glm::cross(bottomLeft - topLeft, bottomRight - topLeft));
+
+    glPushAttrib(GL_ALL_ATTRIB_BITS);
+    glColor4f(0, 0, 0.5, 0.4);
+    glPolygonMode(GL_FRONT, GL_LINE);
+    glPolygonMode(GL_BACK, GL_LINE);
+
+    glBegin(GL_QUADS);
+    glNormal3fv(glm::value_ptr(normal));
+    glVertex3f(topLeft.x, topLeft.y, topLeft.z);
+    glVertex3f(bottomLeft.x, bottomLeft.y, bottomLeft.z);
+    glVertex3f(bottomRight.x, bottomRight.y, bottomRight.z);
+    glVertex3f(topRight.x, topRight.y, topRight.z);
+    glEnd();
+
+    glPopAttrib();
+}

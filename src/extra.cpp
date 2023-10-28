@@ -18,8 +18,9 @@ void renderImageWithDepthOfField(const Scene& scene, const BVHInterface& bvh, co
     }
 
     // ...
-    std::default_random_engine generator;
-    std::uniform_real_distribution<float> distribution(-0.5f, 0.5f);
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_real_distribution<float> distr(-0.5f, 0.5f);
 
 
 #ifdef NDEBUG // Enable multi threading in Release mode
@@ -28,23 +29,26 @@ void renderImageWithDepthOfField(const Scene& scene, const BVHInterface& bvh, co
     for (int y = 0; y < screen.resolution().y; y++) {
         for (int x = 0; x < screen.resolution().x; x++) {
             glm::vec3 L = glm::vec3(0);
+            glm::vec2 position = (glm::vec2(x, y) + 0.5f) / glm::vec2(screen.resolution()) * 2.f - 1.f; // position on the screen
+            Ray ray = camera.generateRay(position); // the ray from the pixel center
+            glm::vec3 focalPoint = ray.origin + features.extra.focusDistance * ray.direction; // calculate the focal point
+            
             for (int samp = 0; samp < features.extra.numDofSamples; samp++) {
                 //generate random sample -> represents the position on the square lens
-                float xLens = features.extra.aperture * distribution(generator);
-                float yLens = features.extra.aperture * distribution(generator);
+                float xLens = features.extra.aperture * distr(generator);
+                float yLens = features.extra.aperture * distr(generator);
 
-                glm::vec2 position = (glm::vec2(x, y) + 0.5f) / glm::vec2(screen.resolution()) * 2.f - 1.f; //position on the screen
-                Ray ray = camera.generateRay(position); //the ray from the pixel center
-                glm::vec3 focalPoint = ray.origin + features.extra.focusDistance * ray.direction; //calculate the focal point
-                ray.origin += xLens * glm::normalize(camera.left()) + yLens * glm::normalize(camera.up()); //shift the origin of the ray on the lens aperture
-                ray.direction = glm::normalize(focalPoint - ray.origin); // calculate the direction (towards the focal point)
+                Ray dofRay;
+                dofRay.origin = ray.origin +  xLens * glm::normalize(camera.left()) + yLens * glm::normalize(camera.up()); //shift the origin of the ray on the lens aperture
+                dofRay.direction = glm::normalize(focalPoint - dofRay.origin); // calculate the direction (towards the focal point)
+                dofRay.t = std::numeric_limits<float>::max();
                 RenderState state = {
                     .scene = scene,
                     .features = features,
                     .bvh = bvh,
                     .sampler = { static_cast<uint32_t>(screen.resolution().y * x + y) }
                 };
-                L += renderRay(state, ray, 0);
+                L += renderRay(state, dofRay, 0);
             }
 
             L /= features.extra.numDofSamples;
