@@ -100,11 +100,14 @@ int main(int argc, char** argv)
                     debugBVHLeafId = std::max(0, debugBVHLeafId - 1);
                 } break;
                 case GLFW_KEY_D: {
+                    // Produce the depth of field rays from the pixel position corresponding to where the mouse is.
+                    // Saves the depth of field model configuration from when the key was pressed in order to draw. 
                     if (!config.features.extra.enableDepthOfField)
                         break;
                     RenderState state = { .scene = scene, .features = config.features, .bvh = bvh, .sampler = { debugRaySeed } };
-                    auto pixel = screen.resolution() / 2;
-                    dofRays = generateRaysDof(state, camera, pixel, screen.resolution());
+                    auto tmp = window.getNormalizedCursorPos();
+                    auto pixel = glm::ivec2(tmp * glm::vec2(screen.resolution()));
+                    dofRays = generateRaysDof(state, camera, pixel, screen.resolution(), focusPoint);
                     lensSize = config.features.extra.aperture;
                     dofLeft = camera.left();
                     dofUp = camera.up();
@@ -412,6 +415,7 @@ int main(int argc, char** argv)
                         enableDebugDraw = false;
                     }
                     if (!dofRays.empty() && config.features.extra.enableDepthOfField) {
+                        // Draws the depth of field generated rays from a pixel position and the lens and the focus point
                         enableDebugDraw = true;
                         glDisable(GL_LIGHTING);
                         glDepthFunc(GL_LEQUAL);

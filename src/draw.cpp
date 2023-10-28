@@ -204,15 +204,18 @@ void dofDebug(const float& lensSize, const glm::vec3& focusPoint, const glm::vec
     if (!enableDebugDraw)
         return;
 
-    drawSphere(focusPoint, 0.005f, glm::vec3(1, 0, 1));
+    // draws the focus point
+    drawSphere(focusPoint, 0.008f, glm::vec3(0, 1, 1));
     float halfLensSize = lensSize / 2.0f;
 
+    //calculates the positions of the corners of the lens and the corresponding normal for lighting purposes
     glm::vec3 topLeft = position + halfLensSize * up + halfLensSize * left;
     glm::vec3 bottomLeft = position - halfLensSize * up + halfLensSize * left;
     glm::vec3 topRight = position + halfLensSize * up - halfLensSize * left;
     glm::vec3 bottomRight = position - halfLensSize * up - halfLensSize * left;
     glm::vec3 normal = glm::normalize(glm::cross(bottomLeft - topLeft, bottomRight - topLeft));
 
+    //draws the lens as a square without interior
     glPushAttrib(GL_ALL_ATTRIB_BITS);
     glColor4f(0, 0, 0.5, 0.4);
     glPolygonMode(GL_FRONT, GL_LINE);

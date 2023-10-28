@@ -55,4 +55,7 @@ std::vector<Ray> generatePixelRaysMultisampled(RenderState &state, const Trackba
 // not go on a hunting expedition for your implementation, so please keep it here!
 std::vector<Ray> generatePixelRaysStratified(RenderState& state, const Trackball& camera, glm::ivec2 pixel, glm::ivec2 screenResolution);
 
-std::vector<Ray> generateRaysDof(RenderState& state, const Trackball& camera, glm::ivec2 pixel, glm::ivec2 screenResolution);
+/**
+* Forwards the ray generation to the method in extra.
+*/
+std::vector<Ray> generateRaysDof(RenderState& state, const Trackball& camera, glm::ivec2 pixel, glm::ivec2 screenResolution, glm::vec3& focusPoint);

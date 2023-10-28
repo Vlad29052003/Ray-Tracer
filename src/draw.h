@@ -26,5 +26,10 @@ void drawMesh(const Mesh& mesh);
 void drawSphere(const Sphere& sphere);
 void drawSphere(const glm::vec3& center, float radius, const glm::vec3& color = glm::vec3(1.0f));
 void drawScene(const Scene& scene);
+
+/**
+* Given the size of the lens, the position of the focus point and the up and left directions relative to the camera orientation
+* it draws the lens from which the rays are sampled as a blue square and the focus point as a light blue sphere.
+**/
 void dofDebug(const float& lensSize, const glm::vec3& focusPoint, const glm::vec3& position, const glm::vec3& up, const glm::vec3& left);
 

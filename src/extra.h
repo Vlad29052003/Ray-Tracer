@@ -14,7 +14,14 @@
 // not go on a hunting expedition for your implementation, so please keep it here!
 void renderImageWithDepthOfField(const Scene& scene, const BVHInterface& bvh, const Features& features, const Trackball& camera, Screen& screen);
 
-std::vector<Ray> generateDofRaysForDebug(const Scene& scene, const BVHInterface& bvh, const Features& features, const Trackball& camera, glm::ivec2 screenResolution, const glm::vec2& pixel);
+/**
+* Generates a set of rays from the given pixel position.
+* This function is strictly for debug purposes.
+* It uses the same algorithm as in the renderImageWithDepthOfField but due to some parts
+* for example the random number generator
+* it had to be declared separately.
+*/
+std::vector<Ray> generateDofRaysForDebug(const Scene& scene, const BVHInterface& bvh, const Features& features, const Trackball& camera, glm::ivec2 screenResolution, const glm::vec2& pixel, glm::vec3& focusPoint);
 
     // TODO; Extra feature
 // Given the same input as for `renderImage()`, instead render an image with your own implementation
