@@ -135,33 +135,37 @@ glm::vec3 computeBlinnPhongModel(RenderState& state, const glm::vec3& cameraDire
 // This method is unit-tested, so do not change the function signature.
 glm::vec3 LinearGradient::sample(float ti) const
 {
-    auto sortedComponents = components;
+    std::vector<int> sortedComponents;
+    for (int i = 0; i < components.size(); i++) {
+        sortedComponents.push_back(i);
+    }
+
     int j;
     //sort
-    for (int i = components.size() - 1; i >= 0; i--) {
+    for (int i = 1; i < components.size(); i++) {
         j = i - 1;
         while(j >= 0 && components.at(j).t > components.at(i).t) {
             sortedComponents.at(j + 1) = sortedComponents.at(j);
             j--;
         }
-        sortedComponents.at(j + 1) = components.at(i);
+        sortedComponents.at(j + 1) = sortedComponents.at(i);
     }
 
-    if (ti <= sortedComponents.at(0).t)
-        return sortedComponents.at(0).color;
-    else if (ti >= sortedComponents.at(sortedComponents.size() - 1).t)
-        return sortedComponents.at(sortedComponents.size() - 1).color;
+    if (ti <= components.at(sortedComponents.at(0)).t)
+        return components.at(sortedComponents.at(0)).color;
+    else if (ti >= components.at(sortedComponents.at(sortedComponents.size() - 1)).t)
+        return components.at(sortedComponents.at(sortedComponents.size() - 1)).color;
 
-    Component lower = sortedComponents.at(0), upper = sortedComponents.at(0);
+    Component lower = components.at(sortedComponents.at(0)), upper = components.at(sortedComponents.at(0));
 
-    for (auto component : sortedComponents) {
-        if (component.t = ti)
-            return component.color;
-        if (component.t > ti) {
-            upper = component;
+    for (int i = 0; i < components.size(); i++) {
+        if (components.at(sortedComponents.at(i)).t == ti)
+            return components.at(sortedComponents.at(i)).color;
+        if (components.at(sortedComponents.at(i)).t > ti) {
+            upper = components.at(sortedComponents.at(i));
             break;
-        } else if (component.t < ti)
-            lower = component;
+        } else if (components.at(sortedComponents.at(i)).t < ti)
+            lower = components.at(sortedComponents.at(i));
     }
 
     auto coefLower = (ti - lower.t) / (upper.t - lower.t);
