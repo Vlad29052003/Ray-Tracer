@@ -14,9 +14,9 @@
 // not go on a hunting expedition for your implementation, so please keep it here!
 void renderImageWithDepthOfField(const Scene& scene, const BVHInterface& bvh, const Features& features, const Trackball& camera, Screen& screen);
 
-std::vector<Ray> generateDofRaysForDebug(const Scene& scene, const BVHInterface& bvh, const Features& features, const Trackball& camera, Screen& screen, const glm::vec2& pixel, glm::vec3& focusPoint);
+std::vector<Ray> generateDofRaysForDebug(const Scene& scene, const BVHInterface& bvh, const Features& features, const Trackball& camera, glm::ivec2 screenResolution, const glm::vec2& pixel);
 
-// TODO; Extra feature
+    // TODO; Extra feature
 // Given the same input as for `renderImage()`, instead render an image with your own implementation
 // of motion blur. Here, you integrate over a time domain, and not just the pixel's image domain,
 // allowing objects to move during a render, and visualize the appearance of movement.

@@ -69,6 +69,11 @@ int main(int argc, char** argv)
         SceneType sceneType { SceneType::SingleTriangle };
         std::vector<Ray> debugRays;
 
+        std::vector<Ray> dofRays;
+        glm::vec3 focusPoint = glm::vec3(0);
+        float lensSize;
+        glm::vec3 dofUp, dofLeft, dofPosition;
+
         Scene scene = loadScenePrebuilt(sceneType, config.dataPath);
         BVH bvh(scene, config.features);
 
@@ -93,7 +98,17 @@ int main(int argc, char** argv)
                 } break;
                 case GLFW_KEY_S: {
                     debugBVHLeafId = std::max(0, debugBVHLeafId - 1);
-
+                } break;
+                case GLFW_KEY_D: {
+                    if (!config.features.extra.enableDepthOfField)
+                        break;
+                    RenderState state = { .scene = scene, .features = config.features, .bvh = bvh, .sampler = { debugRaySeed } };
+                    auto pixel = screen.resolution() / 2;
+                    dofRays = generateRaysDof(state, camera, pixel, screen.resolution());
+                    lensSize = config.features.extra.aperture;
+                    dofLeft = camera.left();
+                    dofUp = camera.up();
+                    dofPosition = camera.position();
                 } break;
                 case GLFW_KEY_ESCAPE: {
                     window.close();
@@ -124,10 +139,16 @@ int main(int argc, char** argv)
                 };
                 if (ImGui::Combo("Scenes", reinterpret_cast<int*>(&sceneType), items.data(), int(items.size()))) {
                     debugRays.clear();
+                    dofRays.clear();
                     scene = loadScenePrebuilt(sceneType, config.dataPath);
                     selectedLightIdx = scene.lights.empty() ? -1 : 0;
                     bvh = BVH(scene, config.features);
 
+                    if (!dofRays.empty() && config.features.extra.enableDepthOfField) {
+                        RenderState state = { .scene = scene, .features = config.features, .bvh = bvh, .sampler = { debugRaySeed } };
+                        renderRays(state, dofRays);
+                        dofDebug(lensSize, focusPoint, dofPosition, dofUp, dofLeft);
+                    }
                     if (!debugRays.empty()) {
                         RenderState state = { .scene = scene, .features = config.features, .bvh = bvh, .sampler = { debugRaySeed } };
                         renderRays(state, debugRays);
@@ -388,6 +409,15 @@ int main(int argc, char** argv)
                         glDepthFunc(GL_LEQUAL);
                         RenderState state = { .scene = scene, .features = config.features, .bvh = bvh, .sampler = { debugRaySeed } };
                         (void)renderRays(state, debugRays);
+                        enableDebugDraw = false;
+                    }
+                    if (!dofRays.empty() && config.features.extra.enableDepthOfField) {
+                        enableDebugDraw = true;
+                        glDisable(GL_LIGHTING);
+                        glDepthFunc(GL_LEQUAL);
+                        RenderState state = { .scene = scene, .features = config.features, .bvh = bvh, .sampler = { debugRaySeed } };
+                        (void)renderRays(state, dofRays);
+                        dofDebug(lensSize, focusPoint, dofPosition, dofUp, dofLeft);
                         enableDebugDraw = false;
                     }
                 }
