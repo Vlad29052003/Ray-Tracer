@@ -57,6 +57,30 @@ void renderImageWithDepthOfField(const Scene& scene, const BVHInterface& bvh, co
     }
 }
 
+std::vector<Ray> generateDofRaysForDebug(const Scene& scene, const BVHInterface& bvh, const Features& features, const Trackball& camera, Screen& screen, const glm::vec2& pixel, glm::vec3& focusPoint)
+{
+    std::vector<Ray> dofRays;
+
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_real_distribution<float> distr(-0.5f, 0.5f);
+
+    glm::vec2 position = (glm::vec2(pixel.x, pixel.y) + 0.5f) / glm::vec2(screen.resolution()) * 2.f - 1.f; // position on the screen
+    Ray ray = camera.generateRay(position); // the ray from the pixel center
+    focusPoint = ray.origin + features.extra.focusDistance * ray.direction; // calculate the focal point
+    for (int samp = 0; samp < features.extra.numDofSamples; samp++) {
+        // generate random sample -> represents the position on the square lens
+        float xLens = features.extra.aperture * distr(generator);
+        float yLens = features.extra.aperture * distr(generator);
+
+        Ray dofRay;
+        dofRay.origin = ray.origin + xLens * glm::normalize(camera.left()) + yLens * glm::normalize(camera.up()); // shift the origin of the ray on the lens aperture
+        dofRay.direction = glm::normalize(focusPoint - dofRay.origin); // calculate the direction (towards the focal point)
+        dofRay.t = std::numeric_limits<float>::max();
+        dofRays.push_back(dofRay);
+    }
+}
+
 // TODO; Extra feature
 // Given the same input as for `renderImage()`, instead render an image with your own implementation
 // of motion blur. Here, you integrate over a time domain, and not just the pixel's image domain,

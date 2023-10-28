@@ -199,7 +199,7 @@ void drawRay(const Ray& ray, const glm::vec3& color)
     glPopAttrib();
 }
 
-void drawDofLens(const float& lensSize, const glm::vec3& focusPoint, const glm::vec3& position, const glm::vec3& up, const glm::vec3& left)
+void dofDebug(const float& lensSize, const glm::vec3& focusPoint, const glm::vec3& position, const glm::vec3& up, const glm::vec3& left)
 {
     if (!enableDebugDraw)
         return;
