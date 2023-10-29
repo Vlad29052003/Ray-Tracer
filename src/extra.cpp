@@ -37,12 +37,12 @@ void renderImageWithDepthOfField(const Scene& scene, const BVHInterface& bvh, co
             
             for (int samp = 0; samp < features.extra.numDofSamples; samp++) {
                 //generate random sample -> represents the position on the square lens
-                float xLens = features.extra.aperture * distr(generator);
-                float yLens = features.extra.aperture * distr(generator);
+                float xLens = features.extra.lensLength * distr(generator);
+                float yLens = features.extra.lensLength * distr(generator);
 
                 //calculates the depth of field ray - which has its origin on the lens and directed towards the focus point
                 Ray dofRay;
-                dofRay.origin = ray.origin +  xLens * glm::normalize(camera.left()) + yLens * glm::normalize(camera.up()); //shift the origin of the ray on the lens aperture
+                dofRay.origin = ray.origin +  xLens * glm::normalize(camera.left()) + yLens * glm::normalize(camera.up()); //shift the origin of the ray on the lens
                 dofRay.direction = glm::normalize(focusPoint - dofRay.origin); // calculate the direction (towards the focal point)
                 dofRay.t = std::numeric_limits<float>::max();
                 RenderState state = {
@@ -75,12 +75,12 @@ std::vector<Ray> generateDofRaysForDebug(const Scene& scene, const BVHInterface&
     focusPoint = ray.origin + features.extra.focusDistance * ray.direction; // calculate the focus point position
     for (int samp = 0; samp < features.extra.numDofSamples; samp++) {
         // generate random sample -> represents the position on the square lens
-        float xLens = features.extra.aperture * distr(generator);
-        float yLens = features.extra.aperture * distr(generator);
+        float xLens = features.extra.lensLength * distr(generator);
+        float yLens = features.extra.lensLength * distr(generator);
 
         //calculates the depth of field ray - which has its origin on the lens and directed towards the focus point
         Ray dofRay;
-        dofRay.origin = ray.origin + xLens * glm::normalize(camera.left()) + yLens * glm::normalize(camera.up()); // shift the origin of the ray on the lens aperture
+        dofRay.origin = ray.origin + xLens * glm::normalize(camera.left()) + yLens * glm::normalize(camera.up()); // shift the origin of the ray on the lens
         dofRay.direction = glm::normalize(focusPoint - dofRay.origin); // calculate the direction (towards the focal point)
         dofRay.t = std::numeric_limits<float>::max();
         dofRays.push_back(dofRay);

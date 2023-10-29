@@ -74,7 +74,7 @@ struct ExtraFeatures {
     //Parameters for depth of field
     float focusDistance = 10.0f;
     int numDofSamples = 8;
-    float aperture = 0.2f;
+    float lensLength = 0.2f;
 
 };
 
