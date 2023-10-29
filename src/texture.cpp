@@ -19,8 +19,8 @@ glm::vec3 sampleTextureNearest(const Image& image, const glm::vec2& texCoord)
     // The pixel are stored in a 1D array of row major order
     // you can convert from position (i,j) to an index using the method seen in the lecture
     // Note, the center of the first pixel is at image coordinates (0.5, 0.5)
-    int i = (int)floor(texCoord.x * image.width);
-    int j = (int)floor(texCoord.y * image.height);
+    int i = static_cast<int>(floor(texCoord.x * image.width));
+    int j = static_cast<int>(floor(texCoord.y * image.height));
 
     return image.pixels[j * image.width + i];
 }
@@ -42,43 +42,13 @@ glm::vec3 sampleTextureBilinear(const Image& image, const glm::vec2& texCoord)
     // The pixel are stored in a 1D array of row major order
     // you can convert from position (i,j) to an index using the method seen in the lecture
     // Note, the center of the first pixel is at image coordinates (0.5, 0.5)
-    //int i = (1.0f - texCoord.x) * image.width;
-    //int j = (1.0f - texCoord.y) * image.height;
-    auto tempx = (int)floor(texCoord.x * image.width);
-    auto tempy = (int)floor(texCoord.y * image.height);
+    auto tempx = static_cast<int>(floor(texCoord.x * image.width));
+    auto tempy = static_cast<int>(floor(texCoord.y * image.height));
 
-    /* int x0 = static_cast<int>(x);
-    int x1 = x0 + 1;
-    int y0 = static_cast<int>(y);
-    int y1 = y0 + 1;
-
-    // Ensure the coordinates are within the image bounds
-    x0 = std::max(0, std::min(x0, image.width - 1));
-    x1 = std::max(0, std::min(x1, image.width - 1));
-    y0 = std::max(0, std::min(y0, image.height - 1));
-    y1 = std::max(0, std::min(y1, image.height - 1));
-
-    // Calculate the interpolation weights
-    float sx = x - x0;
-    float sy = y - y0;
-    float a = (1.0f - sx) * (1.0f - sy);
-    float b = sx * (1.0f - sy);
-    float c = (1.0f - sx) * sy;
-    float d = sx * sy;
-
-    // Sample the texels and interpolate color
-    glm::vec3 texel00 = image.pixels[y0 * image.width + x0];
-    glm::vec3 texel01 = image.pixels[y0 * image.width + x1];
-    glm::vec3 texel10 = image.pixels[y1 * image.width + x0];
-    glm::vec3 texel11 = image.pixels[y1 * image.width + x1];
-
-    glm::vec3 interpolatedColor = a * texel00 + b * texel01 + c * texel10 + d * texel11;
-
-    return interpolatedColor;*/
     glm::vec2 v0 = { tempx, tempy };
-    glm::vec2 v1 = { tempx+1, tempy };
-    glm::vec2 v2 = { tempx+1, tempy+1 };
-    glm::vec2 v3 = { tempx, tempy+1 };
+    glm::vec2 v1 = { std::max(0, std::min(tempx+1, image.width)), tempy };
+    glm::vec2 v2 = { std::max(0, std::min(tempx+1, image.width)), std::max(0, std::min(tempy+1, image.height)) };
+    glm::vec2 v3 = { tempx, std::max(0, std::min(tempy+1, image.height)) };
 
     glm::vec2 position = v0 * texCoord.x * texCoord.y + v1 * (1.0f - texCoord.x) * texCoord.y + 
         v2 * (1.0f - texCoord.x) * (1.0f - texCoord.y) + v3 * texCoord.x * (1.0f - texCoord.y);
