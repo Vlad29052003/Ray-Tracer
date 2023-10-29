@@ -11,7 +11,7 @@
 #include <chrono>
 #include <framework/opengl_includes.h>
 #include <iostream>
-#include <stack>
+#include <queue>
 #include <queue>
 
 // Helper method to fill in hitInfo object. This can be safely ignored (or extended).
@@ -171,7 +171,7 @@ uint32_t computeAABBLongestAxis(const AxisAlignedBox& aabb)
 
 // TODO: Standard feature
 // Given a range of BVH triangles, sort these along a specified axis based on their geometric centroid.
-// Then, find and return the split index in the range, such that the subrange containing the first element 
+// Then, find and return the split index in the range, such that the subrange containing the first element
 // of the list is at least as big as the other, and both differ at most by one element in size.
 // Hint: you should probably reuse `computePrimitiveCentroid()`
 // - aabb;       the axis-aligned bounding box around the given triangle range
@@ -228,67 +228,50 @@ bool intersectRayWithBVH(RenderState& state, const BVHInterface& bvh, Ray& ray, 
     bool is_hit = false;
 
     if (state.features.enableAccelStructure) {
-        std::priority_queue<std::pair<float, uint32_t>, std::vector<std::pair<float, uint32_t>>, std::greater<std::pair<float, uint32_t>>> q;
-
         float prev = ray.t;
+        std::queue<uint32_t> s;
+        s.push(0);
 
-        // Initialize the priority queue
-        if (intersectRayWithShape(nodes[0].aabb, ray)) {
-            q.push({ ray.t, 0 });
-        }
-        ray.t = prev;
+        while (!s.empty()) {
+            Node node = nodes[s.front()];
+            s.pop();
 
-        while (!q.empty()) {
-            auto [t, curIndex] = q.top();
-            q.pop();
-
-            // If the closest intersection so far is closer than the current node, break
-            if (t > ray.t) {
-                break;
-            }
-
-            Node curNode = nodes[curIndex];
-
-            if (curNode.isLeaf()) {
-                for (int i = curNode.primitiveOffset(); i < curNode.primitiveOffset() + curNode.primitiveCount(); ++i) {
+            if (node.isLeaf()) {
+                for (int i = node.primitiveOffset(); i < node.primitiveOffset() + node.primitiveCount(); ++i) {
                     if (intersectRayWithTriangle(primitives[i].v0.position, primitives[i].v1.position, primitives[i].v2.position, ray, hitInfo)) {
                         updateHitInfo(state, primitives[i], ray, hitInfo);
                     }
                 }
             } else {
                 float previous = ray.t;
-                // Checking both child nodes and pushing them to the priority queue if they intersect
-                if (intersectRayWithShape(nodes[curNode.leftChild()].aabb, ray)) {
-                    q.push({ ray.t, curNode.leftChild() });
-                    ray.t = previous;
-                }
-                if (intersectRayWithShape(nodes[curNode.rightChild()].aabb, ray)) {
-                    q.push({ ray.t, curNode.rightChild() });
-                    ray.t = previous;
-                }
+                    if(intersectRayWithShape(nodes[node.rightChild()].aabb, ray)) {
+                        ray.t = previous;
+                        s.push(node.rightChild());
+                    }
+                    if(intersectRayWithShape(nodes[node.leftChild()].aabb, ray)) {
+                        ray.t = previous;
+                        s.push(node.leftChild());
+                    }
             }
         }
-
-        if (prev > ray.t) {
+        if(prev > ray.t)
             is_hit = true;
-        } else {
-            // Naive implementation; simply iterates over all primitives
-            for (const auto& prim : primitives) {
-                const auto& [v0, v1, v2] = std::tie(prim.v0, prim.v1, prim.v2);
-                if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
-                    updateHitInfo(state, prim, ray, hitInfo);
-                    is_hit = true;
-                }
+    } else {
+        // Naive implementation; simply iterates over all primitives
+        for (const auto& prim : primitives) {
+            const auto& [v0, v1, v2] = std::tie(prim.v0, prim.v1, prim.v2);
+            if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
+                updateHitInfo(state, prim, ray, hitInfo);
+                is_hit = true;
             }
         }
-
-        // Intersect with spheres.
-        for (const auto& sphere : state.scene.spheres)
-            is_hit |= intersectRayWithShape(sphere, ray, hitInfo);
-        return is_hit;
     }
-}
 
+    // Intersect with spheres.
+    for (const auto& sphere : state.scene.spheres)
+        is_hit |= intersectRayWithShape(sphere, ray, hitInfo);
+    return is_hit;
+}
 
 // TODO: Standard feature
 // Leaf construction routine; you should reuse this in in `buildRecursive()`
