@@ -128,6 +128,16 @@ glm::vec3 sampleEnvironmentMap(RenderState& state, Ray ray)
 }
 
 
+float areaOfAABB(AxisAlignedBox aabb)
+{
+    float l1 = abs(aabb.lower[0] - aabb.upper[0]);
+    float l2 = abs(aabb.lower[1] - aabb.upper[1]);
+    float l3 = abs(aabb.lower[2] - aabb.upper[2]);
+
+    return 2 * (l1 * l2 + l2 * l3 + l3 * l1);
+}
+
+
 // TODO: Extra feature
 // As an alternative to `splitPrimitivesByMedian`, use a SAH+binning splitting criterion. Refer to
 // the `Data Structures` lecture for details on this metric.
@@ -140,5 +150,53 @@ size_t splitPrimitivesBySAHBin(const AxisAlignedBox& aabb, uint32_t axis, std::s
 {
     using Primitive = BVH::Primitive;
 
-    return 0; // This is clearly not the solution
+    float global_cost = std::numeric_limits<float>::infinity();
+    float left_size = 0;
+
+    std::sort(primitives.begin(), primitives.end(),
+        [axis](const Primitive& a, const Primitive& b) {
+            glm::vec3 centroidA = computePrimitiveCentroid(a);
+            glm::vec3 centroidB = computePrimitiveCentroid(b);
+            return centroidA[axis] < centroidB[axis];});
+
+    uint32_t num_bins = 8;
+
+    float size_of_bin = (aabb.upper[axis] - aabb.lower[axis]) / num_bins;
+
+    for(int i = 1; i < num_bins; ++i) {
+        float dist = aabb.lower[axis] + i * size_of_bin;
+
+        std::vector<BVH::Primitive> left_primitives;
+        std::vector<BVH::Primitive> right_primitives;
+
+        for(auto& primitive : primitives) {
+            if(computePrimitiveCentroid(primitive)[axis] < dist) {
+                left_primitives.push_back(primitive);
+            }
+            else {
+                right_primitives.push_back(primitive);
+            }
+        }
+
+        if(left_primitives.size() == 0 || right_primitives.size() == 0) continue;
+
+        std::span<BVH::Primitive> left_span = left_primitives;
+        AxisAlignedBox left_aabb = computeSpanAABB(left_span);
+        std::span<BVH::Primitive> right_span = right_primitives;
+        AxisAlignedBox right_aabb = computeSpanAABB(right_span);
+
+        float cost = left_span.size() * areaOfAABB(left_aabb) + right_span.size() * areaOfAABB(right_aabb);
+
+        if(cost < global_cost) {
+            global_cost = cost;
+            left_size = left_span.size();
+        }
+
+    }
+
+    if(left_size == 0) {
+        return splitPrimitivesByMedian(aabb, axis, primitives);
+    }
+
+    return left_size;
 }

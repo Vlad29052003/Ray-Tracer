@@ -336,7 +336,12 @@ void BVH::buildRecursive(const Scene& scene, const Features& features, std::span
         m_nodes[nodeIndex] = buildLeafData(scene, features, aabb, primitives);
     }
     else {
-        size_t idx = splitPrimitivesByMedian(aabb, computeAABBLongestAxis(aabb), primitives);
+        size_t idx;
+        if(features.extra.enableBvhSahBinning) {
+            idx = splitPrimitivesBySAHBin(aabb, computeAABBLongestAxis(aabb), primitives);
+        } else {
+            idx = splitPrimitivesByMedian(aabb, computeAABBLongestAxis(aabb), primitives);
+        }
         uint32_t left = nextNodeIdx();
         buildRecursive(scene, features, primitives.subspan(0, idx), left);
         uint32_t right = nextNodeIdx();
