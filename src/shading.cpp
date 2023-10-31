@@ -60,6 +60,12 @@ glm::vec3 computeShading(RenderState& state, const glm::vec3& cameraDirection, c
 glm::vec3 computeLambertianModel(RenderState& state, const glm::vec3& cameraDirection, const glm::vec3& lightDirection, const glm::vec3& lightColor, const HitInfo& hitInfo)
 {
     // Implement basic diffuse shading if you wish to use it
+    auto d_prod = dot(hitInfo.normal, normalize(lightDirection));
+    auto temp = sampleMaterialKd(state, hitInfo) * glm::max(d_prod, 0.0f);
+
+    auto D = temp * lightColor;
+
+    return D;
 }
 
 // TODO: Standard feature

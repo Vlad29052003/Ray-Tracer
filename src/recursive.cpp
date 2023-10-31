@@ -75,7 +75,7 @@ Ray generateReflectionRay(Ray ray, HitInfo hitInfo)
     //       if you use glm::reflect, you will not get points for this method!
     glm::vec3 incomingRay = -1.0f * glm::normalize(ray.direction);
     glm::vec3 mirrored = 2.0f * glm::dot(incomingRay, hitInfo.normal) * hitInfo.normal - incomingRay;
-    return Ray { ray.origin + (ray.t - 10 * FLT_EPSILON) * ray.direction, mirrored, std::numeric_limits<float>::max() };
+    return Ray { ray.origin + (ray.t - 100 * FLT_EPSILON) * ray.direction, mirrored, std::numeric_limits<float>::max() };
 }
 
 // TODO: Standard feature
