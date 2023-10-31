@@ -34,14 +34,25 @@ void renderImageWithMotionBlur(const Scene& scene, const BVHInterface& bvh, cons
 
 }
 
+void getBrightAreas(Screen& image) {
+    for (auto y = 0; y < image.resolution().y; y++) {
+        for (auto x = 0; x < image.resolution().x; x++) {
+            auto color = image.pixels()[image.indexAt(x, y)];
+            auto perceived_luminance = 0.2126f * color.r + 0.7152f * color.g + 0.0722f * color.b; //https://en.wikipedia.org/wiki/Relative_luminance
+
+            if
+        }
+    }
+}
+
 // TODO; Extra feature
 // Given a rendered image, compute and apply a bloom post-processing effect to increase bright areas.
 // This method is not unit-tested, but we do expect to find it **exactly here**, and we'd rather
 // not go on a hunting expedition for your implementation, so please keep it here!
 void postprocessImageWithBloom(const Scene& scene, const Features& features, const Trackball& camera, Screen& image)
 {
-    if (!features.extra.enableBloomEffect) {
-        return;
+    if (features.extra.enableBloomEffect) {
+        getBrightAreas(image);
     }
 
     // ...
