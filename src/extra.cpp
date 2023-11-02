@@ -159,7 +159,7 @@ size_t splitPrimitivesBySAHBin(const AxisAlignedBox& aabb, uint32_t axis, std::s
             glm::vec3 centroidB = computePrimitiveCentroid(b);
             return centroidA[axis] < centroidB[axis];});
 
-    uint32_t num_bins = 8;
+    uint32_t num_bins = 10;
 
     float size_of_bin = (aabb.upper[axis] - aabb.lower[axis]) / num_bins;
 
