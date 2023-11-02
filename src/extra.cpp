@@ -133,26 +133,13 @@ void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInf
     // Generate an initial specular ray, and base secondary glossies on this ray
     // auto numSamples = state.features.extra.numGlossySamples;
     // ...
-
-    Ray reflectedRay = generateReflectionRay(ray, hitInfo);
+    HitInfo h;
+    Ray reflectedRay = generateReflectionRay(ray, h);
 
     //generate orthogonal vectors u and v
-    //we can generate the first othogonal vector manually and the second using cross product
-    glm::vec3 u = glm::vec3(0), v = glm::vec3(0);
-    if (reflectedRay.direction.x != 0) {
-        u.z = -reflectedRay.direction.x;
-        u.x = reflectedRay.direction.z;
-    } else if (reflectedRay.direction.y != 0) {
-        u.z = -reflectedRay.direction.y;
-        u.y = reflectedRay.direction.z;
-    } else {
-        u.z = reflectedRay.direction.y;
-        u.y = -reflectedRay.direction.z;
-    }
-    u = glm::normalize(u);
-
-    v = glm::cross(u, ray.direction);
-    v = glm::normalize(v);
+    glm::vec3 u, v;
+    u = glm::normalize(glm::cross(reflectedRay.direction, reflectedRay.direction + glm::vec3(0, 1, 0)));
+    v = glm::normalize(glm::cross(u, reflectedRay.direction));
 
     //calculate the regulation factor that will be applied to the initial radius of 1
     float regulationFactor = hitInfo.material.shininess / 64.0f;
