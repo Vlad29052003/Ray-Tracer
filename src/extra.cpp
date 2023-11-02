@@ -132,54 +132,55 @@ void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInf
 {
     // Generate an initial specular ray, and base secondary glossies on this ray
     // auto numSamples = state.features.extra.numGlossySamples;
-    // ...
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_real_distribution<float> distrRadius(0.0f, 0.5f);
+    std::uniform_real_distribution<float> distrAngle(0.0f, 360.0f);
 
     Ray reflectedRay = generateReflectionRay(ray, hitInfo);
 
-    //generate orthogonal vectors u and v
+    // Generate orthogonal vectors u and v
     glm::vec3 u, v;
     u = glm::normalize(glm::cross(reflectedRay.direction, reflectedRay.direction + glm::vec3(0, 1, 0)));
     v = glm::normalize(glm::cross(u, reflectedRay.direction)); 
 
-    //calculate the regulation factor that will be applied to the initial radius of 1
+    // Calculate the regulation factor that will be applied to the initial radius of 1
     float regulationFactor = hitInfo.material.shininess / 64.0f;
 
     glm::vec3 sumOfInterference = glm::vec3(0);
 
     for (int i = 0; i < state.features.extra.numGlossySamples; ++i) {
-        //map a uniformly distributed 2d sample (essentially a square) into coordinates of a disc
-        //using FG-Squircular mapping (https://arxiv.org/ftp/arxiv/papers/1709/1709.07875.pdf)
-        glm::vec2 sample = state.sampler.next_2d() - glm::vec2(0.5f, 0.5f); // [0,1) to [-0.5, 0.5)
-        float sqRoot = sqrtf(sample.x * sample.x + sample.y * sample.y - sample.x * sample.y);
-        float length = sqrtf(sample.x * sample.x + sample.y * sample.y);
-        float ratio = (length != 0) ? (sqRoot / length) : sqRoot;
-        float x = regulationFactor * sample.x * ratio;
-        float y = regulationFactor * sample.y * ratio;
+        // Map a uniformly distributed angle to coordinates in disk with radius 0.5 * regulationFactor
+        // The points are on a circle whose radius is smaller than 0.5 * regulation factor, which is randomly generated.
+        float angle = distrAngle(generator);
+        float radius = distrRadius(generator);
+        float x = glm::cos(angle) * radius * regulationFactor;
+        float y = glm::sin(angle) * radius * regulationFactor;
 
-        //shift the direction of the perfect reflection
+        // Shift the direction of the perfect reflection
         glm::vec3 glossyReflectionRayDirection = reflectedRay.direction + x * u + y * v;
         Ray glossyReflectionRay = Ray(reflectedRay.origin, glossyReflectionRayDirection, std::numeric_limits<float>::max());
 
-        //sum up the conttributions of each ray
+        // Sum up the conttributions of each ray
         sumOfInterference += renderRay(state, glossyReflectionRay, rayDepth + 1) * hitInfo.material.ks;
     }
-    //normalize the sum of the rays and add the result to the current color
+    // Normalize the sum of the rays and add the result to the current color
     sumOfInterference /= state.features.extra.numGlossySamples;
     hitColor += sumOfInterference;
 }
 
 std::vector<glm::vec3> glossyDebug(Ray ray, const HitInfo& hitInfo) {
     std::vector<glm::vec3> vectors = std::vector<glm::vec3>();
-    //calculates the reflected Ray
+    // Calculates the perfect reflected Ray
     Ray reflectedRay = generateReflectionRay(ray, hitInfo);
 
-    //calculates the othonormal basis for the disk
+    // Calculates the othonormal basis for the disk
     glm::vec3 u, v;
     u = glm::normalize(glm::cross(reflectedRay.direction, reflectedRay.direction + glm::vec3(0, 1, 0)));
     v = glm::normalize(glm::cross(u, reflectedRay.direction));
 
-    //calculates the radius
-    float radius = 0.5f * hitInfo.material.shininess / 64.0f;
+    // Calculates the radius which is 0.5 * regulationFactor so shininess / 128
+    float radius = hitInfo.material.shininess / 128.0f;
     glm::vec3 rad = glm::vec3(radius);
 
     vectors.push_back(reflectedRay.origin);
