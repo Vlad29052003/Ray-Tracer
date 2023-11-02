@@ -5,7 +5,7 @@
 #include "shading.h"
 #include <framework/trackball.h>
 
-// TODO; Extra feature
+// Extra feature
 // Given the same input as for `renderImage()`, instead render an image with your own implementation
 // of Depth of Field. Here, you generate camera rays s.t. a focus point and a thin lens camera model
 // are in play, allowing objects to be in and out of focus.
@@ -17,7 +17,76 @@ void renderImageWithDepthOfField(const Scene& scene, const BVHInterface& bvh, co
         return;
     }
 
-    // ...
+    //uniform number generation in the interval [-0.5, 0.5) for generating position on the lens
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_real_distribution<float> distr(-0.5f, 0.5f);
+
+
+#ifdef NDEBUG // Enable multi threading in Release mode
+#pragma omp parallel for schedule(guided)
+#endif
+    //iterate through all pixels
+    for (int y = 0; y < screen.resolution().y; y++) {
+        for (int x = 0; x < screen.resolution().x; x++) {
+
+            glm::vec3 L = glm::vec3(0); //accumulator
+            glm::vec2 position = (glm::vec2(x, y) + 0.5f) / glm::vec2(screen.resolution()) * 2.f - 1.f; // position on the screen
+            Ray ray = camera.generateRay(position); // the ray from the pixel center
+            glm::vec3 focusPoint = ray.origin + features.extra.focusDistance * ray.direction; // calculate the focus point position
+            
+            for (int samp = 0; samp < features.extra.numDofSamples; samp++) {
+                //generate random sample -> represents the position on the square lens
+                float xLens = features.extra.lensLength * distr(generator);
+                float yLens = features.extra.lensLength * distr(generator);
+
+                //calculates the depth of field ray - which has its origin on the lens and directed towards the focus point
+                Ray dofRay;
+                dofRay.origin = ray.origin +  xLens * glm::normalize(camera.left()) + yLens * glm::normalize(camera.up()); //shift the origin of the ray on the lens
+                dofRay.direction = glm::normalize(focusPoint - dofRay.origin); // calculate the direction (towards the focal point)
+                dofRay.t = std::numeric_limits<float>::max();
+                RenderState state = {
+                    .scene = scene,
+                    .features = features,
+                    .bvh = bvh,
+                    .sampler = { static_cast<uint32_t>(screen.resolution().y * x + y) }
+                };
+                L += renderRay(state, dofRay, 0); //accumulate colors of the hit point of the rays
+            }
+
+            L /= features.extra.numDofSamples; //normalize the color
+            screen.setPixel(x, y, L); //set the correcponding color to the pixel
+        }
+    }
+}
+
+std::vector<Ray> generateDofRaysForDebug(const Scene& scene, const BVHInterface& bvh, const Features& features, const Trackball& camera, glm::ivec2 screenResolution, const glm::vec2& pixel, glm::vec3& focusPoint)
+{
+    //vector of the depth of field rays
+    std::vector<Ray> dofRays;
+
+    //random number generators for generating the position on the lens
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_real_distribution<float> distr(-0.5f, 0.5f);
+
+    glm::vec2 position = (glm::vec2(pixel.x, pixel.y) + 0.5f) / glm::vec2(screenResolution) * 2.f - 1.f; // position on the screen
+    Ray ray = camera.generateRay(position); // the ray from the pixel center
+    focusPoint = ray.origin + features.extra.focusDistance * ray.direction; // calculate the focus point position
+    for (int samp = 0; samp < features.extra.numDofSamples; samp++) {
+        // generate random sample -> represents the position on the square lens
+        float xLens = features.extra.lensLength * distr(generator);
+        float yLens = features.extra.lensLength * distr(generator);
+
+        //calculates the depth of field ray - which has its origin on the lens and directed towards the focus point
+        Ray dofRay;
+        dofRay.origin = ray.origin + xLens * glm::normalize(camera.left()) + yLens * glm::normalize(camera.up()); // shift the origin of the ray on the lens
+        dofRay.direction = glm::normalize(focusPoint - dofRay.origin); // calculate the direction (towards the focal point)
+        dofRay.t = std::numeric_limits<float>::max();
+        dofRays.push_back(dofRay);
+    }
+
+    return dofRays;
 }
 
 // TODO; Extra feature
@@ -63,50 +132,62 @@ void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInf
 {
     // Generate an initial specular ray, and base secondary glossies on this ray
     // auto numSamples = state.features.extra.numGlossySamples;
-    // ...
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_real_distribution<float> distrRadius(0.0f, 0.5f);
+    std::uniform_real_distribution<float> distrAngle(0.0f, 360.0f);
 
-    Ray r = generateReflectionRay(ray, hitInfo);
+    Ray reflectedRay = generateReflectionRay(ray, hitInfo);
 
-    //generate orthogonal vectors u and v
-    //we can generate the first othogonal vector manually and the second using cross product
-    glm::vec3 u = glm::vec3(0), v = glm::vec3(0);
-    if (r.direction.x != 0) {
-        u.z = -r.direction.x;
-        u.x = r.direction.z;
-    } else if (r.direction.y != 0) {
-        u.z = -r.direction.y;
-        u.y = r.direction.z;
-    } else {
-        u.z = r.direction.y;
-        u.y = -r.direction.z;
-    }
+    // Generate orthogonal vectors u and v
+    glm::vec3 u, v;
+    u = glm::normalize(glm::cross(reflectedRay.direction, reflectedRay.direction + glm::vec3(0, 1, 0)));
+    v = glm::normalize(glm::cross(u, reflectedRay.direction)); 
 
-    v = glm::cross(u, ray.direction);
-
-    u = glm::normalize(u);
-    v = glm::normalize(v);
-
-    //calculate the regulation factor that will be applied to the initial radius of 1
+    // Calculate the regulation factor that will be applied to the initial radius of 1
     float regulationFactor = hitInfo.material.shininess / 64.0f;
 
     glm::vec3 sumOfInterference = glm::vec3(0);
 
     for (int i = 0; i < state.features.extra.numGlossySamples; ++i) {
-        //map a uniformly distributed 2d sample to the coordinates of a circle, using the regulation factor
-        glm::vec2 sample = state.sampler.next_2d();
-        float x = regulationFactor * glm::cos(glm::radians(360.f * sample.x));
-        float y = regulationFactor * glm::sin(glm::radians(360.f * sample.y));
+        // Map a uniformly distributed angle to coordinates in disk with radius 0.5 * regulationFactor
+        // The points are on a circle whose radius is smaller than 0.5 * regulation factor, which is randomly generated.
+        float angle = distrAngle(generator);
+        float radius = distrRadius(generator);
+        float x = glm::cos(angle) * radius * regulationFactor;
+        float y = glm::sin(angle) * radius * regulationFactor;
 
-        glm::vec3 glossyReflectionRayDirection = r.direction + x * u + y * v;
-        Ray glossyReflectionRay = Ray(r.origin, glossyReflectionRayDirection, std::numeric_limits<float>::max());
+        // Shift the direction of the perfect reflection
+        glm::vec3 glossyReflectionRayDirection = reflectedRay.direction + x * u + y * v;
+        Ray glossyReflectionRay = Ray(reflectedRay.origin, glossyReflectionRayDirection, std::numeric_limits<float>::max());
 
-        //sum up the conttributions of each ray
+        // Sum up the conttributions of each ray
         sumOfInterference += renderRay(state, glossyReflectionRay, rayDepth + 1) * hitInfo.material.ks;
     }
-
-    //hormalize the sum of the rays and add the result to the current color
+    // Normalize the sum of the rays and add the result to the current color
     sumOfInterference /= state.features.extra.numGlossySamples;
     hitColor += sumOfInterference;
+}
+
+std::vector<glm::vec3> glossyDebug(Ray ray, const HitInfo& hitInfo) {
+    std::vector<glm::vec3> vectors = std::vector<glm::vec3>();
+    // Calculates the perfect reflected Ray
+    Ray reflectedRay = generateReflectionRay(ray, hitInfo);
+
+    // Calculates the othonormal basis for the disk
+    glm::vec3 u, v;
+    u = glm::normalize(glm::cross(reflectedRay.direction, reflectedRay.direction + glm::vec3(0, 1, 0)));
+    v = glm::normalize(glm::cross(u, reflectedRay.direction));
+
+    // Calculates the radius which is 0.5 * regulationFactor so shininess / 128
+    float radius = hitInfo.material.shininess / 128.0f;
+    glm::vec3 rad = glm::vec3(radius);
+
+    vectors.push_back(reflectedRay.origin);
+    vectors.push_back(u);
+    vectors.push_back(v);
+    vectors.push_back(rad);
+    return vectors;
 }
 
 // TODO; Extra feature

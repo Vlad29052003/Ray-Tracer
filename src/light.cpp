@@ -12,7 +12,6 @@ DISABLE_WARNINGS_PUSH()
 #include <glm/geometric.hpp>
 DISABLE_WARNINGS_POP()
 
-
 // Standard feature
 // Given a single segment light, transform a uniformly distributed 1d sample in [0, 1),
 // into a uniformly sampled position and an interpolated color on the segment light,
@@ -66,7 +65,7 @@ void sampleParallelogramLight(const glm::vec2& sample, const ParallelogramLight&
 // - hitInfo;       information about the current intersection
 // - return;        whether the light is visible (true) or not (false)
 // This method is unit-tested, so do not change the function signature.
-bool visibilityOfLightSampleBinary(RenderState& state, const glm::vec3& lightPosition, const glm::vec3 &lightColor, const Ray& ray, const HitInfo& hitInfo)
+bool visibilityOfLightSampleBinary(RenderState& state, const glm::vec3& lightPosition, const glm::vec3& lightColor, const Ray& ray, const HitInfo& hitInfo)
 {
     if (!state.features.enableShadows) {
         // Shadows are disabled in the renderer
@@ -102,20 +101,27 @@ bool visibilityOfLightSampleBinary(RenderState& state, const glm::vec3& lightPos
 glm::vec3 visibilityOfLightSampleTransparency(RenderState& state, const glm::vec3& lightPosition, const glm::vec3& lightColor, const Ray& ray, const HitInfo& hitInfo)
 {
     // TODO: implement this function; currently, the light simply passes through
-    glm::vec3 origin = ray.origin + (ray.t - 10 * FLT_EPSILON) * ray.direction;
-    glm::vec3 direction = lightPosition - origin;
+    glm::vec3 origin = ray.origin + (ray.t - 100 * FLT_EPSILON) * ray.direction;
+    glm::vec3 direction = glm::normalize(lightPosition - origin);
+    float distanceToLight = glm::length(lightPosition - origin);
     Ray lightVisibilityRay = Ray(origin, direction, std::numeric_limits<float>::max());
     HitInfo intersectionHitInfo = HitInfo(glm::vec3(0), glm::vec3(0), glm::vec2(0), Material(glm::vec3(0)));
 
-    bool intersected = state.bvh.intersect(state, lightVisibilityRay, intersectionHitInfo);
-    if (lightVisibilityRay.t >= (1.0f - 10 * FLT_EPSILON))
-        return lightColor;
-    else if (intersectionHitInfo.material.transparency < 1.0f) {
-        glm::vec3 recursiveOrigin = lightVisibilityRay.origin + (lightVisibilityRay.t + 10 * FLT_EPSILON) * lightVisibilityRay.direction;
-        Ray recursiveRay = Ray(recursiveOrigin, lightPosition - recursiveOrigin, std::numeric_limits<float>::max());
-        HitInfo recursiveHitInfo = HitInfo(glm::vec3(0), glm::vec3(0), glm::vec2(0), Material(glm::vec3(0)));
-        glm::vec3 recursiveLight = visibilityOfLightSampleTransparency(state, lightPosition, lightColor, recursiveRay, recursiveHitInfo);
-        return recursiveLight * intersectionHitInfo.material.kd * (1.f - intersectionHitInfo.material.transparency);
+    glm::vec3 curColor = lightColor;
+
+    while (true) {
+        bool intersected = state.bvh.intersect(state, lightVisibilityRay, intersectionHitInfo);
+        if (distanceToLight - 100 * FLT_EPSILON <= lightVisibilityRay.t)
+            return curColor;
+        else if (intersectionHitInfo.material.transparency == 1.0f) {
+            return glm::vec3(0);
+        } else {
+            origin = lightVisibilityRay.origin + ((lightVisibilityRay.t + 100 * FLT_EPSILON) * lightVisibilityRay.direction);
+            direction = glm::normalize(lightPosition - origin);
+            distanceToLight = glm::length(lightPosition - origin);
+            lightVisibilityRay = Ray(origin, direction, std::numeric_limits<float>::max());
+            curColor *= intersectionHitInfo.material.kd * (1 - intersectionHitInfo.material.transparency);
+        }
     }
     return glm::vec3(0);
 }

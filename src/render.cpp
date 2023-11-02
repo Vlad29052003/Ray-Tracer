@@ -70,6 +70,12 @@ std::vector<Ray> generatePixelRays(RenderState& state, const Trackball& camera, 
     }
 }
 
+std::vector<Ray> generateRaysDof(RenderState& state, const Trackball& camera, glm::ivec2 pixel, glm::ivec2 screenResolution, glm::vec3& focusPoint)
+{
+    //Forwards the ray generation to the method in extra.
+    return generateDofRaysForDebug(state.scene, state.bvh, state.features, camera, screenResolution, pixel, focusPoint);
+}
+
 // TODO: standard feature
 // Given a render state, camera, pixel position, and output resolution, generates a set of camera ray samples placed
 // uniformly throughout this pixel.
