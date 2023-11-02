@@ -33,3 +33,5 @@ void drawScene(const Scene& scene);
 **/
 void dofDebug(const float& lensSize, const glm::vec3& focusPoint, const glm::vec3& position, const glm::vec3& up, const glm::vec3& left);
 
+void drawCircle(glm::vec3 origin, glm::vec3 u, glm::vec3 v, float radius);
+

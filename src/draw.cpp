@@ -231,3 +231,20 @@ void dofDebug(const float& lensSize, const glm::vec3& focusPoint, const glm::vec
 
     glPopAttrib();
 }
+
+void drawCircle(glm::vec3 origin, glm::vec3 u, glm::vec3 v, float radius)
+{
+    if (!enableDebugDraw)
+        return;
+
+    glColor3f(1.0, 1.0, 0.0);
+    glBegin(GL_TRIANGLE_FAN);
+
+    for (int i = 0; i <= 64; ++i) {
+        float angle = 2.0 * glm::pi<float>() * float(i) / 64.0f;
+        glm::vec3 point = origin + radius * (std::cos(angle) * u + std::sin(angle) * v);
+        glVertex3f(point.x, point.y, point.z);
+    }
+
+    glEnd();
+}

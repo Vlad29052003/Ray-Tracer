@@ -6,6 +6,7 @@
 #include "sampler.h"
 #include "recursive.h"
 #include "screen.h"
+#include "extra.h"
 // Suppress warnings in third-party code.
 #include <framework/disable_all_warnings.h>
 DISABLE_WARNINGS_PUSH()
@@ -73,6 +74,8 @@ int main(int argc, char** argv)
         glm::vec3 focusPoint = glm::vec3(0);
         float lensSize;
         glm::vec3 dofUp, dofLeft, dofPosition;
+        Ray rayForGlossy;
+        HitInfo hitInfoForGlossy;
 
         Scene scene = loadScenePrebuilt(sceneType, config.dataPath);
         BVH bvh(scene, config.features);
@@ -92,6 +95,12 @@ int main(int argc, char** argv)
                     auto tmp = window.getNormalizedCursorPos();
                     auto pixel = glm::ivec2(tmp * glm::vec2(screen.resolution()));
                     debugRays = generatePixelRays(state, camera, pixel, screen.resolution());
+
+                    if (config.features.extra.enableGlossyReflection) {
+                        glm::vec2 position = (glm::vec2(pixel) + 0.5f) / glm::vec2(screen.resolution()) * 2.f - 1.f;
+                        rayForGlossy = camera.generateRay(position);
+                        bvh.intersect(state, rayForGlossy, hitInfoForGlossy);
+                    }
                 } break;
                 case GLFW_KEY_A: {
                     debugBVHLeafId++;
@@ -412,6 +421,10 @@ int main(int argc, char** argv)
                         glDepthFunc(GL_LEQUAL);
                         RenderState state = { .scene = scene, .features = config.features, .bvh = bvh, .sampler = { debugRaySeed } };
                         (void)renderRays(state, debugRays);
+                        if (config.features.extra.enableGlossyReflection && hitInfoForGlossy.material.ks != glm::vec3(0)) {
+                            std::vector<glm::vec3> coordinates = glossyDebug(rayForGlossy, hitInfoForGlossy);
+                            drawCircle(coordinates[0], coordinates[1], coordinates[2], coordinates[3].x);
+                        }
                         enableDebugDraw = false;
                     }
                     if (!dofRays.empty() && config.features.extra.enableDepthOfField) {

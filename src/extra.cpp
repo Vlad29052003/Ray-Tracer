@@ -5,7 +5,7 @@
 #include "shading.h"
 #include <framework/trackball.h>
 
-// TODO; Extra feature
+// Extra feature
 // Given the same input as for `renderImage()`, instead render an image with your own implementation
 // of Depth of Field. Here, you generate camera rays s.t. a focus point and a thin lens camera model
 // are in play, allowing objects to be in and out of focus.
@@ -133,13 +133,13 @@ void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInf
     // Generate an initial specular ray, and base secondary glossies on this ray
     // auto numSamples = state.features.extra.numGlossySamples;
     // ...
-    HitInfo h;
-    Ray reflectedRay = generateReflectionRay(ray, h);
+
+    Ray reflectedRay = generateReflectionRay(ray, hitInfo);
 
     //generate orthogonal vectors u and v
     glm::vec3 u, v;
     u = glm::normalize(glm::cross(reflectedRay.direction, reflectedRay.direction + glm::vec3(0, 1, 0)));
-    v = glm::normalize(glm::cross(u, reflectedRay.direction));
+    v = glm::normalize(glm::cross(u, reflectedRay.direction)); 
 
     //calculate the regulation factor that will be applied to the initial radius of 1
     float regulationFactor = hitInfo.material.shininess / 64.0f;
@@ -166,6 +166,27 @@ void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInf
     //normalize the sum of the rays and add the result to the current color
     sumOfInterference /= state.features.extra.numGlossySamples;
     hitColor += sumOfInterference;
+}
+
+std::vector<glm::vec3> glossyDebug(Ray ray, const HitInfo& hitInfo) {
+    std::vector<glm::vec3> vectors = std::vector<glm::vec3>();
+    //calculates the reflected Ray
+    Ray reflectedRay = generateReflectionRay(ray, hitInfo);
+
+    //calculates the othonormal basis for the disk
+    glm::vec3 u, v;
+    u = glm::normalize(glm::cross(reflectedRay.direction, reflectedRay.direction + glm::vec3(0, 1, 0)));
+    v = glm::normalize(glm::cross(u, reflectedRay.direction));
+
+    //calculates the radius
+    float radius = 0.5f * hitInfo.material.shininess / 64.0f;
+    glm::vec3 rad = glm::vec3(radius);
+
+    vectors.push_back(reflectedRay.origin);
+    vectors.push_back(u);
+    vectors.push_back(v);
+    vectors.push_back(rad);
+    return vectors;
 }
 
 // TODO; Extra feature
