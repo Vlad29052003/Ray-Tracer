@@ -45,15 +45,14 @@ glm::vec3 sampleTextureBilinear(const Image& image, const glm::vec2& texCoord)
     auto tempx = static_cast<int>(floor(texCoord.x * image.width));
     auto tempy = static_cast<int>(floor(texCoord.y * image.height));
 
+    auto alpha = texCoord.x * image.width - tempx;
+    auto beta = texCoord.y * image.height - tempy;
+
     glm::vec2 v0 = { tempx, tempy };
     glm::vec2 v1 = { std::max(0, std::min(tempx+1, image.width)), tempy };
     glm::vec2 v2 = { std::max(0, std::min(tempx+1, image.width)), std::max(0, std::min(tempy+1, image.height)) };
     glm::vec2 v3 = { tempx, std::max(0, std::min(tempy+1, image.height)) };
 
-    glm::vec2 position = v0 * texCoord.x * texCoord.y + v1 * (1.0f - texCoord.x) * texCoord.y + 
-        v2 * (1.0f - texCoord.x) * (1.0f - texCoord.y) + v3 * texCoord.x * (1.0f - texCoord.y);
-
-    auto i = floor(position.x);
-    auto j = floor(position.y);
-    return image.pixels[j * image.width + i];
+    return image.pixels[v0.y * image.width + v0.x] * (1.0f - alpha) * (1.0f - beta) + image.pixels[v1.y * image.width + v1.x] * alpha * (1.0f - beta) +
+        image.pixels[v2.y * image.width + v2.x] * alpha * beta + image.pixels[v3.y * image.width + v3.x] * (1.0f - alpha) * beta;
 }
