@@ -130,17 +130,12 @@ bool intersectRayWithShape(const AxisAlignedBox& box, Ray& ray)
         tmax = std::min(tmax, t2);
         if (tmin > tmax) return false;
     }
-    if (ray.t < 0) {
-        return false;
+    if (tmin <= tmax && tmax >= 0) {
+        float t = tmin;
+        if (t < ray.t) {
+            ray.t = t;
+            return true;
+        }
     }
-    if (tmin >= 0 && tmin < ray.t) {
-        ray.t = tmin;
-        return true;
-    }
-    if (tmax < ray.t) {
-        ray.t = tmax;
-        return true;
-    }
-
     return false;
 }
