@@ -38,21 +38,22 @@ void getBrightAreas(Screen& image, Screen& output) {
     for (auto y = 0; y < output.resolution().y; y++) {
         for (auto x = 0; x < output.resolution().x; x++) {
             auto color = output.pixels()[output.indexAt(x, y)];
-            auto perceived_luminance = 0.2126f * color.r + 0.7152f * color.g + 0.0722f * color.b; //https://en.wikipedia.org/wiki/Relative_luminance
+            //auto perceived_luminance = 0.2126f * color.r + 0.7152f * color.g + 0.0722f * color.b; https://en.wikipedia.org/wiki/Relative_luminance
 
-            if (perceived_luminance > 0.9f)
+            if (color.z > 0.6f && color.x > 0.6f && color.y > 0.6f) {
                 output.pixels()[output.indexAt(x, y)] = { 1.0f, 1.0f, 1.0f };
-            else
+            } else {
                 output.pixels()[output.indexAt(x, y)] = { 0.0f, 0.0f, 0.0f };
+            }
         }
     }
 }
 
 // Function to apply the horizontal pass of the Gaussian filter
-void applyGaussianFilterHorizontal(const Screen& input, Screen& output, const std::vector<float>& filter, int filterSize)
+void applyGaussianFilterHorizontal(Screen& image, const std::vector<float>& filter, int filterSize)
 {
-    int width = input.resolution().x;
-    int height = input.resolution().y;
+    int width = image.resolution().x;
+    int height = image.resolution().y;
     int radius = filterSize / 2;
 
     for (int y = 0; y < height; y++) {
@@ -61,19 +62,19 @@ void applyGaussianFilterHorizontal(const Screen& input, Screen& output, const st
 
             for (int k = -radius; k <= radius; k++) {
                 int idx = glm::clamp(x + k, 0, width - 1);
-                color += input.pixels()[input.indexAt(idx, y)] * filter[k + radius];
+                color += image.pixels()[image.indexAt(idx, y)] * filter[k + radius];
             }
 
-            output.setPixel(x, y, color);
+            image.setPixel(x, y, color);
         }
     }
 }
 
 // Function to apply the vertical pass of the Gaussian filter
-void applyGaussianFilterVertical(const Screen& input, Screen& output, const std::vector<float>& filter, int filterSize)
+void applyGaussianFilterVertical(Screen& image, const std::vector<float>& filter, int filterSize)
 {
-    int width = input.resolution().x;
-    int height = input.resolution().y;
+    int width = image.resolution().x;
+    int height = image.resolution().y;
     int radius = filterSize / 2;
 
     for (int y = 0; y < height; y++) {
@@ -82,10 +83,12 @@ void applyGaussianFilterVertical(const Screen& input, Screen& output, const std:
 
             for (int k = -radius; k <= radius; k++) {
                 int idx = glm::clamp(y + k, 0, height - 1);
-                color += input.pixels()[input.indexAt(x, idx)] * filter[k + radius];
+                color += image.pixels()[image.indexAt(x, idx)] * filter[k + radius];
             }
 
-            output.setPixel(x, y, color);
+
+
+            image.setPixel(x, y, color);
         }
     }
 }
@@ -93,24 +96,24 @@ void applyGaussianFilterVertical(const Screen& input, Screen& output, const std:
 // Function to apply a 2D Gaussian filter to an image
 void applyGaussianFilter(Screen& image, int filterSize, float sigma)
 {
-    // Create a separable Gaussian filter
     std::vector<float> filter(filterSize);
     float sum = 0.0f;
 
     for (int k = 0; k < filterSize; k++) {
-        int n = filterSize; // Filter size minus one
+        int n = filterSize;
         int numerator = 1;
-        int denominatorn = 1;
+        int denominatork = 1;
         int denominatornk = 1;
 
-        // Calculate the binomial coefficient C(n, k)
-        for (int i = 0; i <= k; i++) {
-            numerator *= (n - i);
-            denominatorn *= i;
-            denominatornk *= (n - k - i);
-        }
+        for (int i = 1; i < n; i++)
+            numerator *= i;
+        for (int i = 1; i <= k; i++)
+            denominatork *= i;
+        for (int i = 1; i < (n - k); i++)
+            denominatornk *= i;
+        
 
-        filter[k] = static_cast<float>(numerator) / static_cast<float>(denominatorn * denominatornk);
+        filter[k] = static_cast<float>(numerator) / static_cast<float>(denominatork * denominatornk);
         sum += filter[k];
     }
 
@@ -120,11 +123,11 @@ void applyGaussianFilter(Screen& image, int filterSize, float sigma)
     }
 
     // Apply the horizontal pass of the filter
-    Screen horizontalFiltered(image.resolution(), false);
-    applyGaussianFilterHorizontal(image, horizontalFiltered, filter, filterSize);
+    //Screen horizontalFiltered(image);
+    applyGaussianFilterHorizontal(image, filter, filterSize);
 
     // Apply the vertical pass of the filter to the horizontally filtered image
-    applyGaussianFilterVertical(horizontalFiltered, image, filter, filterSize);
+    applyGaussianFilterVertical(image, filter, filterSize);
 }
 
 void combineFilteredWithOriginalImage(const Scene& scene, const Trackball& camera, Screen& originalImage, Screen& filteredImage)
@@ -148,7 +151,7 @@ void combineFilteredWithOriginalImage(const Scene& scene, const Trackball& camer
 void postprocessImageWithBloom(const Scene& scene, const Features& features, const Trackball& camera, Screen& image)
 {
     if (features.extra.enableBloomEffect) {
-        Screen filteredImage(image.resolution(), false);
+        Screen filteredImage(image);
         getBrightAreas(image, filteredImage);
         applyGaussianFilter(filteredImage, 9, 4.0f);  // Implementation of this helper function got from the class slides
         combineFilteredWithOriginalImage(scene, camera, image, filteredImage);
