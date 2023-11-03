@@ -6,6 +6,7 @@
 #include "sampler.h"
 #include "recursive.h"
 #include "screen.h"
+#include "extra.h"
 // Suppress warnings in third-party code.
 #include <framework/disable_all_warnings.h>
 DISABLE_WARNINGS_PUSH()
@@ -69,6 +70,13 @@ int main(int argc, char** argv)
         SceneType sceneType { SceneType::SingleTriangle };
         std::vector<Ray> debugRays;
 
+        std::vector<Ray> dofRays;
+        glm::vec3 focusPoint = glm::vec3(0);
+        float lensSize;
+        glm::vec3 dofUp, dofLeft, dofPosition;
+        Ray rayForGlossy;
+        HitInfo hitInfoForGlossy;
+
         Scene scene = loadScenePrebuilt(sceneType, config.dataPath);
         BVH bvh(scene, config.features);
 
@@ -87,13 +95,32 @@ int main(int argc, char** argv)
                     auto tmp = window.getNormalizedCursorPos();
                     auto pixel = glm::ivec2(tmp * glm::vec2(screen.resolution()));
                     debugRays = generatePixelRays(state, camera, pixel, screen.resolution());
+
+                    if (config.features.extra.enableGlossyReflection) {
+                        glm::vec2 position = (glm::vec2(pixel) + 0.5f) / glm::vec2(screen.resolution()) * 2.f - 1.f;
+                        rayForGlossy = camera.generateRay(position);
+                        bvh.intersect(state, rayForGlossy, hitInfoForGlossy);
+                    }
                 } break;
                 case GLFW_KEY_A: {
                     debugBVHLeafId++;
                 } break;
                 case GLFW_KEY_S: {
                     debugBVHLeafId = std::max(0, debugBVHLeafId - 1);
-
+                } break;
+                case GLFW_KEY_D: {
+                    // Produce the depth of field rays from the pixel position corresponding to where the mouse is.
+                    // Saves the depth of field model configuration from when the key was pressed in order to draw. 
+                    if (!config.features.extra.enableDepthOfField)
+                        break;
+                    RenderState state = { .scene = scene, .features = config.features, .bvh = bvh, .sampler = { debugRaySeed } };
+                    auto tmp = window.getNormalizedCursorPos();
+                    auto pixel = glm::ivec2(tmp * glm::vec2(screen.resolution()));
+                    dofRays = generateRaysDof(state, camera, pixel, screen.resolution(), focusPoint);
+                    lensSize = config.features.extra.lensLength;
+                    dofLeft = camera.left();
+                    dofUp = camera.up();
+                    dofPosition = camera.position();
                 } break;
                 case GLFW_KEY_ESCAPE: {
                     window.close();
@@ -124,10 +151,16 @@ int main(int argc, char** argv)
                 };
                 if (ImGui::Combo("Scenes", reinterpret_cast<int*>(&sceneType), items.data(), int(items.size()))) {
                     debugRays.clear();
+                    dofRays.clear();
                     scene = loadScenePrebuilt(sceneType, config.dataPath);
                     selectedLightIdx = scene.lights.empty() ? -1 : 0;
                     bvh = BVH(scene, config.features);
 
+                    if (!dofRays.empty() && config.features.extra.enableDepthOfField) {
+                        RenderState state = { .scene = scene, .features = config.features, .bvh = bvh, .sampler = { debugRaySeed } };
+                        renderRays(state, dofRays);
+                        dofDebug(lensSize, focusPoint, dofPosition, dofUp, dofLeft);
+                    }
                     if (!debugRays.empty()) {
                         RenderState state = { .scene = scene, .features = config.features, .bvh = bvh, .sampler = { debugRaySeed } };
                         renderRays(state, debugRays);
@@ -191,6 +224,10 @@ int main(int argc, char** argv)
                 if (config.features.extra.enableDepthOfField) {
                     ImGui::Indent();
                     // Add DOF settings here, if necessary
+                    uint32_t minSamples = 1u, maxSamples = 64u;
+                    ImGui::SliderFloat("Focal distance", &config.features.extra.focusDistance, 0.1f, 100.0f, "%.1f", 10.0f);
+                    ImGui::SliderScalar("Dof samples", ImGuiDataType_U32, &config.features.extra.numDofSamples, &minSamples, &maxSamples);
+                    ImGui::SliderFloat("Lens size", &config.features.extra.lensLength, 0.0f, 10.0f, "%.2f", 2.0f);
                     ImGui::Unindent();
                 }
                 ImGui::Checkbox("Motion blur", &config.features.extra.enableMotionBlur);
@@ -384,6 +421,20 @@ int main(int argc, char** argv)
                         glDepthFunc(GL_LEQUAL);
                         RenderState state = { .scene = scene, .features = config.features, .bvh = bvh, .sampler = { debugRaySeed } };
                         (void)renderRays(state, debugRays);
+                        if (config.features.extra.enableGlossyReflection && hitInfoForGlossy.material.ks != glm::vec3(0)) {
+                            std::vector<glm::vec3> coordinates = glossyDebug(rayForGlossy, hitInfoForGlossy);
+                            drawCircle(coordinates[0], coordinates[1], coordinates[2], coordinates[3].x);
+                        }
+                        enableDebugDraw = false;
+                    }
+                    if (!dofRays.empty() && config.features.extra.enableDepthOfField) {
+                        // Draws the depth of field generated rays from a pixel position and the lens and the focus point
+                        enableDebugDraw = true;
+                        glDisable(GL_LIGHTING);
+                        glDepthFunc(GL_LEQUAL);
+                        RenderState state = { .scene = scene, .features = config.features, .bvh = bvh, .sampler = { debugRaySeed } };
+                        (void)renderRays(state, dofRays);
+                        dofDebug(lensSize, focusPoint, dofPosition, dofUp, dofLeft);
                         enableDebugDraw = false;
                     }
                 }

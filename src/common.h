@@ -71,6 +71,11 @@ struct ExtraFeatures {
     // Parameters for glossy reflection
     uint32_t numGlossySamples = 1;
 
+    //Parameters for depth of field
+    float focusDistance = 10.0f;
+    int numDofSamples = 8;
+    float lensLength = 0.2f;
+
 };
 
 struct Features {
