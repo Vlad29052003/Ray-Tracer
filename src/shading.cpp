@@ -60,6 +60,7 @@ glm::vec3 computeShading(RenderState& state, const glm::vec3& cameraDirection, c
 glm::vec3 computeLambertianModel(RenderState& state, const glm::vec3& cameraDirection, const glm::vec3& lightDirection, const glm::vec3& lightColor, const HitInfo& hitInfo)
 {
     // Implement basic diffuse shading if you wish to use it
+
 }
 
 // TODO: Standard feature

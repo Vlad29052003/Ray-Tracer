@@ -88,9 +88,9 @@ Ray generateReflectionRay(Ray ray, HitInfo hitInfo)
 Ray generatePassthroughRay(Ray ray, HitInfo hitInfo)
 {
     // TODO: generate a passthrough ray
-    glm::vec3 origin((ray.origin + ray.direction * ray.t) + FLT_EPSILON * ray.direction);
+    glm::vec3 origin((ray.origin + ray.direction * (ray.t + 0.001f)) + FLT_EPSILON * ray.direction);
 
-    return Ray { origin + 0.001f, ray.direction, std::numeric_limits<float>::max() };
+    return Ray { origin, ray.direction, std::numeric_limits<float>::max() };
 }
 
 // Standard feature
