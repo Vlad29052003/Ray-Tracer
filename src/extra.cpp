@@ -103,19 +103,134 @@ void renderImageWithMotionBlur(const Scene& scene, const BVHInterface& bvh, cons
 
 }
 
+void getBrightAreas(Screen& image, Screen& output) {
+    for (auto y = 0; y < output.resolution().y; y++) {
+        for (auto x = 0; x < output.resolution().x; x++) {
+            auto color = output.pixels()[output.indexAt(x, y)];
+            auto perceived_luminance = 0.2126f * color.r + 0.7152f * color.g + 0.0722f * color.b; //https://en.wikipedia.org/wiki/Relative_luminance
+
+            if (perceived_luminance > 0.63) {
+                output.pixels()[output.indexAt(x, y)] = { 1.0f, 1.0f, 1.0f };
+            } else {
+                output.pixels()[output.indexAt(x, y)] = { 0.0f, 0.0f, 0.0f };
+            }
+        }
+    }
+}
+
+void applyGaussianFilterHorizontal(Screen& image, const std::vector<double>& filter, int filterSize)
+{
+    int width = image.resolution().x;
+    int height = image.resolution().y;
+    int radius = filterSize / 2;
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            glm::vec3 color;
+            for (int col = 0; col < 3; col++) {
+                float sum = 0.0;
+                for (int k = -radius; k <= radius; k++) {
+                    int idx = glm::clamp(x + k, 0, width - 1);
+                    sum += image.pixels()[image.indexAt(idx, y)][col] * filter[k + radius];
+                }
+                color[col] = sum;
+            }
+
+            image.setPixel(x, y, color);
+        }
+    }
+}
+
+void applyGaussianFilterVertical(Screen& image, const std::vector<double>& filter, int filterSize)
+{
+    int width = image.resolution().x;
+    int height = image.resolution().y;
+    int radius = filterSize / 2;
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            glm::vec3 color(0.0f);
+            for (int col = 0; col < 3; col++) {
+                float sum = 0.0;
+                for (int k = -radius; k <= radius; k++) {
+                    int idx = glm::clamp(y + k, 0, height - 1);
+                    sum += image.pixels()[image.indexAt(x, idx)][col] * filter[k + radius];
+                }
+                color[col] = sum;
+            }
+
+            image.setPixel(x, y, color);
+        }
+    }
+}
+
+unsigned long long binomialCoefficient(int n, int k)
+{
+    if (k < 0 || k > n)
+        return 0;
+
+    std::vector<unsigned long long> dp(k + 1);
+    dp.at(0) = 1; // C(n, 0) = 1
+
+    for (int i = 1; i <= n; i++) {
+        for (int j = std::min(i, k); j > 0; j--) {
+            dp.at(j) += dp.at(j - 1);
+        }
+    }
+
+    return dp.at(k);
+}
+
+// Function to apply a 2D Gaussian filter to an image
+void gaussianFilter(Screen& image, int filterSize, float sigma)
+{
+    std::vector<double> filter(filterSize);
+    float sum = 0.0f;
+
+    for (int k = 0; k < filterSize; k++) {
+        int n = filterSize;        
+
+        filter[k] = static_cast<double>(binomialCoefficient(n, k));
+        sum += filter[k];
+    }
+
+    for (int k = 0; k < filterSize; k++) {
+        filter[k] /= sum;
+    }
+
+    applyGaussianFilterHorizontal(image, filter, filterSize);
+    applyGaussianFilterVertical(image, filter, filterSize);
+}
+
+void combineFilteredWithOriginalImage(const Scene& scene, const Trackball& camera, Screen& originalImage, Screen& filteredImage)
+{
+    for (int y = 0; y < originalImage.resolution().y; y++) {
+        for (int x = 0; x < originalImage.resolution().x; x++) {
+            auto filteredPixel = filteredImage.pixels()[filteredImage.indexAt(x, y)];
+            auto originalPixel = originalImage.pixels()[originalImage.indexAt(x, y)];
+
+            auto bloomPixel = glm::clamp(originalPixel + filteredPixel, 0.0f, 1.0f);
+
+            originalImage.setPixel(x, y, bloomPixel);
+        }
+    }
+}
+
 // TODO; Extra feature
 // Given a rendered image, compute and apply a bloom post-processing effect to increase bright areas.
 // This method is not unit-tested, but we do expect to find it **exactly here**, and we'd rather
 // not go on a hunting expedition for your implementation, so please keep it here!
 void postprocessImageWithBloom(const Scene& scene, const Features& features, const Trackball& camera, Screen& image)
 {
-    if (!features.extra.enableBloomEffect) {
-        return;
+    if (features.extra.enableBloomEffect) {
+        Screen filteredImage(image);
+        getBrightAreas(image, filteredImage);
+        gaussianFilter(filteredImage, 100, 4.0f);  // Implementation of this helper function got from the class slides
+        combineFilteredWithOriginalImage(scene, camera, image, filteredImage);
     }
 
     // ...
 }
-
 
 // Extra feature
 // Given a camera ray (or reflected camera ray) and an intersection, evaluates the contribution of a set of
