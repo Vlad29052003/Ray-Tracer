@@ -198,3 +198,53 @@ void drawRay(const Ray& ray, const glm::vec3& color)
 
     glPopAttrib();
 }
+
+void dofDebug(const float& lensSize, const glm::vec3& focusPoint, const glm::vec3& position, const glm::vec3& up, const glm::vec3& left)
+{
+    if (!enableDebugDraw)
+        return;
+
+    // draws the focus point
+    drawSphere(focusPoint, 0.008f, glm::vec3(0, 1, 1));
+    float halfLensSize = lensSize / 2.0f;
+
+    //calculates the positions of the corners of the lens and the corresponding normal for lighting purposes
+    glm::vec3 topLeft = position + halfLensSize * up + halfLensSize * left;
+    glm::vec3 bottomLeft = position - halfLensSize * up + halfLensSize * left;
+    glm::vec3 topRight = position + halfLensSize * up - halfLensSize * left;
+    glm::vec3 bottomRight = position - halfLensSize * up - halfLensSize * left;
+    glm::vec3 normal = glm::normalize(glm::cross(bottomLeft - topLeft, bottomRight - topLeft));
+
+    //draws the lens as a square without interior
+    glPushAttrib(GL_ALL_ATTRIB_BITS);
+    glColor4f(0, 0, 0.5, 0.4);
+    glPolygonMode(GL_FRONT, GL_LINE);
+    glPolygonMode(GL_BACK, GL_LINE);
+
+    glBegin(GL_QUADS);
+    glNormal3fv(glm::value_ptr(normal));
+    glVertex3f(topLeft.x, topLeft.y, topLeft.z);
+    glVertex3f(bottomLeft.x, bottomLeft.y, bottomLeft.z);
+    glVertex3f(bottomRight.x, bottomRight.y, bottomRight.z);
+    glVertex3f(topRight.x, topRight.y, topRight.z);
+    glEnd();
+
+    glPopAttrib();
+}
+
+void drawCircle(glm::vec3 origin, glm::vec3 u, glm::vec3 v, float radius)
+{
+    if (!enableDebugDraw)
+        return;
+
+    glColor3f(1.0, 1.0, 0.0);
+    glBegin(GL_TRIANGLE_FAN);
+
+    for (int i = 0; i <= 64; ++i) {
+        float angle = 2.0 * glm::pi<float>() * float(i) / 64.0f;
+        glm::vec3 point = origin + radius * (std::cos(angle) * u + std::sin(angle) * v);
+        glVertex3f(point.x, point.y, point.z);
+    }
+
+    glEnd();
+}
