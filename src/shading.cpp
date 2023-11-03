@@ -85,8 +85,17 @@ glm::vec3 computeLambertianModel(RenderState& state, const glm::vec3& cameraDire
 // This method is unit-tested, so do not change the function signature.
 glm::vec3 computePhongModel(RenderState& state, const glm::vec3& cameraDirection, const glm::vec3& lightDirection, const glm::vec3& lightColor, const HitInfo& hitInfo)
 {
-    // TODO: Implement phong shading
-    return sampleMaterialKd(state, hitInfo) * lightColor;
+    // diffuse
+    auto D = computeLambertianModel(state, cameraDirection, lightDirection, lightColor, hitInfo);
+    // specular
+    if (D == glm::vec3(0))
+        return glm::vec3(0);
+    auto L = normalize(lightDirection);
+    auto reflected_light = normalize(2.0f * dot(hitInfo.normal, L) * hitInfo.normal - L);
+    auto cos_phi = dot(reflected_light, normalize(cameraDirection));
+    auto S = lightColor * hitInfo.material.ks * pow(glm::max(cos_phi, 0.0f), hitInfo.material.shininess);
+
+    return S + D;
 }
 
 // TODO: Standard feature
@@ -106,8 +115,15 @@ glm::vec3 computePhongModel(RenderState& state, const glm::vec3& cameraDirection
 // This method is unit-tested, so do not change the function signature.
 glm::vec3 computeBlinnPhongModel(RenderState& state, const glm::vec3& cameraDirection, const glm::vec3& lightDirection, const glm::vec3& lightColor, const HitInfo& hitInfo)
 {
-    // TODO: Implement blinn-phong shading
-    return sampleMaterialKd(state, hitInfo) * lightColor;
+    auto D = computeLambertianModel(state, cameraDirection, lightDirection, lightColor, hitInfo);
+    if (D == glm::vec3(0))
+        return glm::vec3(0);
+
+    auto H = normalize(normalize(cameraDirection) + normalize(lightDirection));
+    float temp = dot(H, hitInfo.normal);
+
+    auto S = lightColor * hitInfo.material.ks * pow(glm::max(temp, 0.0f), hitInfo.material.shininess);
+    return S + D;
 }
 
 // TODO: Standard feature
@@ -119,7 +135,43 @@ glm::vec3 computeBlinnPhongModel(RenderState& state, const glm::vec3& cameraDire
 // This method is unit-tested, so do not change the function signature.
 glm::vec3 LinearGradient::sample(float ti) const
 {
-    return glm::vec3(0.5f);
+    std::vector<int> sortedComponents;
+    for (int i = 0; i < components.size(); i++) {
+        sortedComponents.push_back(i);
+    }
+
+    int j;
+    //sort
+    for (int i = 1; i < components.size(); i++) {
+        j = i - 1;
+        while(j >= 0 && components.at(j).t > components.at(i).t) {
+            sortedComponents.at(j + 1) = sortedComponents.at(j);
+            j--;
+        }
+        sortedComponents.at(j + 1) = sortedComponents.at(i);
+    }
+
+    if (ti <= components.at(sortedComponents.at(0)).t)
+        return components.at(sortedComponents.at(0)).color;
+    else if (ti >= components.at(sortedComponents.at(sortedComponents.size() - 1)).t)
+        return components.at(sortedComponents.at(sortedComponents.size() - 1)).color;
+
+    Component lower = components.at(sortedComponents.at(0)), upper = components.at(sortedComponents.at(0));
+
+    for (int i = 0; i < components.size(); i++) {
+        if (components.at(sortedComponents.at(i)).t == ti)
+            return components.at(sortedComponents.at(i)).color;
+        if (components.at(sortedComponents.at(i)).t > ti) {
+            upper = components.at(sortedComponents.at(i));
+            break;
+        } else if (components.at(sortedComponents.at(i)).t < ti)
+            lower = components.at(sortedComponents.at(i));
+    }
+
+    auto coefLower = (ti - lower.t) / (upper.t - lower.t);
+    auto coefUpper = 1.0f - coefLower;
+
+    return coefLower * lower.color + coefUpper * upper.color;
 }
 
 // TODO: Standard feature
@@ -140,5 +192,7 @@ glm::vec3 LinearGradient::sample(float ti) const
 glm::vec3 computeLinearGradientModel(RenderState& state, const glm::vec3& cameraDirection, const glm::vec3& lightDirection, const glm::vec3& lightColor, const HitInfo& hitInfo, const LinearGradient& gradient)
 {
     float cos_theta = glm::dot(lightDirection, hitInfo.normal);
-    return glm::vec3(0.f);
+    auto D = gradient.sample(cos_theta) * glm::max(cos_theta, 0.0f) * lightColor;
+
+    return D;
 }
