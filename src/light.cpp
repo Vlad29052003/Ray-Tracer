@@ -72,13 +72,18 @@ bool visibilityOfLightSampleBinary(RenderState& state, const glm::vec3& lightPos
         return true;
     } else {
         // Shadows are enabled in the renderer
-        glm::vec3 origin = ray.origin + (ray.t - 100 * FLT_EPSILON) * ray.direction;
-        glm::vec3 direction = lightPosition - origin;
+        glm::vec3 origin = ray.origin + (ray.t - 0.001f) * ray.direction;
+        glm::vec3 direction = glm::normalize(lightPosition - origin);
+
+        float distance = glm::length(lightPosition - origin);
+
         Ray lightVisibilityRay = Ray(origin, direction, std::numeric_limits<float>::max());
-        HitInfo intersectionHitInfo = HitInfo(glm::vec3(0), glm::vec3(0), glm::vec2(0), Material(glm::vec3(0)));
+        HitInfo intersectionHitInfo;
+
         bool intersected = state.bvh.intersect(state, lightVisibilityRay, intersectionHitInfo);
-        if (lightVisibilityRay.t >= (1.0f - 100 * FLT_EPSILON))
+        if (lightVisibilityRay.t >= distance - 0.001f)
             return true;
+
         return false;
     }
 }
@@ -101,7 +106,7 @@ bool visibilityOfLightSampleBinary(RenderState& state, const glm::vec3& lightPos
 glm::vec3 visibilityOfLightSampleTransparency(RenderState& state, const glm::vec3& lightPosition, const glm::vec3& lightColor, const Ray& ray, const HitInfo& hitInfo)
 {
     // TODO: implement this function; currently, the light simply passes through
-    glm::vec3 origin = ray.origin + (ray.t - 100 * FLT_EPSILON) * ray.direction;
+    glm::vec3 origin = ray.origin + (ray.t - 0.001f) * ray.direction;
     glm::vec3 direction = glm::normalize(lightPosition - origin);
     float distanceToLight = glm::length(lightPosition - origin);
     Ray lightVisibilityRay = Ray(origin, direction, std::numeric_limits<float>::max());
@@ -111,12 +116,12 @@ glm::vec3 visibilityOfLightSampleTransparency(RenderState& state, const glm::vec
 
     while (true) {
         bool intersected = state.bvh.intersect(state, lightVisibilityRay, intersectionHitInfo);
-        if (distanceToLight - 100 * FLT_EPSILON <= lightVisibilityRay.t)
+        if (distanceToLight - 0.001 <= lightVisibilityRay.t)
             return curColor;
         else if (intersectionHitInfo.material.transparency == 1.0f) {
             return glm::vec3(0);
         } else {
-            origin = lightVisibilityRay.origin + ((lightVisibilityRay.t + 100 * FLT_EPSILON) * lightVisibilityRay.direction);
+            origin = lightVisibilityRay.origin + ((lightVisibilityRay.t + 0.001f) * lightVisibilityRay.direction);
             direction = glm::normalize(lightPosition - origin);
             distanceToLight = glm::length(lightPosition - origin);
             lightVisibilityRay = Ray(origin, direction, std::numeric_limits<float>::max());
