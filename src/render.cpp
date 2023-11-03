@@ -91,7 +91,15 @@ std::vector<Ray> generatePixelRaysMultisampled(RenderState& state, const Trackba
     // Hint; use `state.sampler.next*d()` to generate random samples in [0, 1).
     auto numSamples = state.features.numPixelSamples;
     std::vector<Ray> rays;
-    // ...
+
+    for (auto i = 0; i < numSamples; i++) {
+        auto randomSample = state.sampler.next_2d();
+
+        float sampleX = (2.0f * (pixel.x + randomSample.x) / screenResolution.x - 1.0f);
+        float sampleY = -(1.0f - 2.0f * (pixel.y + randomSample.y) / screenResolution.y);
+
+        rays.push_back(camera.generateRay({ sampleX, sampleY }));
+    }
     return rays;
 }
 
@@ -112,6 +120,23 @@ std::vector<Ray> generatePixelRaysStratified(RenderState& state, const Trackball
     // Hint; use `state.sampler.next*d()` to generate random samples in [0, 1).
     auto numSamples = static_cast<uint32_t>(std::round(std::sqrt(float(state.features.numPixelSamples))));
     std::vector<Ray> rays;
-    // ...
+
+    auto cellSizeX = 1.0f / numSamples;
+    auto cellSizeY = 1.0f / numSamples;
+
+    for (auto y = 0; y < numSamples; y++) {
+        for (auto x = 0; x < numSamples; x++) {
+            auto jittered = state.sampler.next_2d();
+
+            auto sampleX = (x + jittered.x) * cellSizeX;
+            auto sampleY = (y + jittered.y) * cellSizeY;
+
+            sampleX = 2.0f * (pixel.x + sampleX) / screenResolution.x - 1.0f;
+            sampleY = -(1.0f - 2.0f * (pixel.y + sampleY) / screenResolution.y);
+
+            rays.push_back(camera.generateRay({sampleX, sampleY}));
+        }
+    }
+    
     return rays;
 }
