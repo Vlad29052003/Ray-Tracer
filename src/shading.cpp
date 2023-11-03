@@ -168,8 +168,8 @@ glm::vec3 LinearGradient::sample(float ti) const
             lower = components.at(sortedComponents.at(i));
     }
 
-    auto coefLower = (ti - lower.t) / (upper.t - lower.t);
-    auto coefUpper = 1.0f - coefLower;
+    auto coefUpper = (ti - lower.t) / (upper.t - lower.t);
+    auto coefLower = 1.0f - coefUpper;
 
     return coefLower * lower.color + coefUpper * upper.color;
 }
